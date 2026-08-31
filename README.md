@@ -4,10 +4,10 @@
 
 # NeyroNetbook 🧠
 
-**Ваш персональный цифровой мозг, 3D/2D граф знаний, планировщик рабочих смен и финансовый менеджер**
+**Ваш персональный цифровой мозг, интерактивный нейро-граф знаний, планировщик рабочих смен и финансовый менеджер**
 
 <p align="center">
-  <img src="https://img.shields.io/badge/NYRONNOTEBOOK-v1.0.0-7c5cff?style=for-the-badge&logo=electron&logoColor=white" alt="Version" />
+  <img src="https://img.shields.io/badge/NEYRONETBOOK-v1.0.0-7c5cff?style=for-the-badge&logo=electron&logoColor=white" alt="Version" />
   <img src="https://img.shields.io/badge/TYPESCRIPT-5.7-3178c6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/REACT-18.3-61dafb?style=for-the-badge&logo=react&logoColor=black" alt="React" />
   <img src="https://img.shields.io/badge/ELECTRON-34-47848F?style=for-the-badge&logo=electron&logoColor=white" alt="Electron" />
@@ -36,14 +36,14 @@
 
 <div align="center">
 
-### 🖥️ Десктопная версия (Windows / macOS / Linux) — Интерактивный 3D/2D Нейро-Граф
+### 🖥️ Десктопная версия (Windows / macOS / Linux) — Интерактивный Нейро-Граф
 <a href="./scrinshot/2.png" target="_blank">
   <img src="./scrinshot/2.png" width="940" alt="NeyroNetbook Desktop Interface" style="border-radius: 12px; border: 1px solid rgba(124, 92, 255, 0.4); box-shadow: 0 16px 45px rgba(0,0,0,0.8);" />
 </a>
 
 <p align="center">
-  <code>⚡ WebGL 2.0 Engine</code> &nbsp;•&nbsp; 
-  <code>🌐 Three.js 3D Physics</code> &nbsp;•&nbsp; 
+  <code>⚡ Силовая физика графа</code> &nbsp;•&nbsp; 
+  <code>🌐 Нейронная сеть мыслей</code> &nbsp;•&nbsp; 
   <code>📝 Obsidian Markdown</code> &nbsp;•&nbsp; 
   <code>📊 Excel & Word Ribbon</code> &nbsp;•&nbsp; 
   <code>🏷️ Multi-Tag Filters</code>
@@ -83,13 +83,13 @@
 
 ## ✨ Основные Модули и Возможности
 
-### 🌌 1. Интерактивный 3D/2D Нейро-Граф Знаний
-- Полноценная трехмерная и двухмерная визуализация мыслей на движке **Three.js** и **d3-force**.
+### 🌌 1. Интерактивный Нейро-Граф Знаний
+- Наглядная интерактивная визуализация мыслей и концептов на движке силовой физики связей.
 - Автоматическая прокладка синаптических связей через двусторонние вики-ссылки `[[Имя заметки]]`.
 - **4 физических пресета компоновки:**
   - ⚡ **Базовый:** сбалансированная гравитация и упругость связей.
   - 🌐 **Кластер:** компактная группировка по тегам и смысловым категориям.
-  - 🪐 **Космос:** просторная галактическая структура для объемных баз знаний.
+  - 🪐 **Космос:** просторная структура для объемных баз знаний.
   - ⚛️ **Ядро:** плотная визуализация вокруг центральных концептов.
 - **Режим «Паук» (Spider-Mode):** локальное фокусирование на активном узле и его непосредственном окружении.
 
@@ -123,7 +123,7 @@
 | `Ctrl + N` / `Cmd + N` | Создать новую мысль или заметку |
 | `Ctrl + O` / `Cmd + O` | Быстрое переключение заметок (Quick Switcher) |
 | `Ctrl + F` / `Cmd + F` | Полнотекстовый и фонетический поиск |
-| `Ctrl + G` / `Cmd + G` | Мгновенное переключение 2D / 3D Нейро-Графа |
+| `Ctrl + G` / `Cmd + G` | Мгновенное открытие Нейро-Графа Знаний |
 | `Ctrl + B` / `Cmd + B` | Скрыть или развернуть боковое дерево файлов |
 | `Ctrl + S` / `Cmd + S` | Принудительное сохранение текущей заметки |
 | `Ctrl + W` / `Cmd + W` | Закрыть активную вкладку |
@@ -144,8 +144,8 @@
       <td>React 18.3 • TypeScript 5.7 • Tailwind CSS 3.4 • Lucide Icons</td>
     </tr>
     <tr>
-      <td><b>3D/2D Графика</b></td>
-      <td>Three.js • d3-force-3d • Three-ForceGraph • WebGL 2.0 Shader Engine</td>
+      <td><b>Графика и Визуализация</b></td>
+      <td>Интерактивный движок связей • WebGL 2.0 Shader Engine</td>
     </tr>
     <tr>
       <td><b>Платформенные оболочки</b></td>
