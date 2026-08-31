@@ -39,20 +39,20 @@ jobs:
       - name: Publish Release to GitHub
         uses: softprops/action-gh-release@v2
         with:
-          name: 'NyronNotebook v1.0.0 — Multi-Platform Release'
+          name: 'NeyroNetbook v1.0.0 — Multi-Platform Release'
           body: |
-            ## 🧠 NyronNotebook v1.0.0 Release
+            ## 🧠 NeyroNetbook v1.0.0 Release
             
             Ваш персональный цифровой мозг, 3D/2D граф знаний, умный планировщик смен и финансовый менеджер.
             
             ### 📦 Доступные файлы для скачивания:
-            - **NyronNotebook-1.0.0.exe** — Windows 10/11 x64 Portable
-            - **NyronNotebook.apk** — Android 8.0 - 15+ Release Signed APK
-            - **NyronNotebook-1.0.0-win.zip** — Windows ZIP Archive
+            - **NeyroNetbook-1.0.0.exe** — Windows 10/11 x64 Portable
+            - **NeyroNetbook.apk** — Android 8.0 - 15+ Release Signed APK
+            - **NeyroNetbook-1.0.0-win.zip** — Windows ZIP Archive
           files: |
-            release/NyronNotebook 1.0.0.exe
-            release/NyronNotebook-1.0.0.exe
-            release/NyronNotebook.apk
-            release/NyronNotebook-1.0.0-win.zip
+            release/NeyroNetbook 1.0.0.exe
+            release/NeyroNetbook-1.0.0.exe
+            release/NeyroNetbook.apk
+            release/NeyroNetbook-1.0.0-win.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

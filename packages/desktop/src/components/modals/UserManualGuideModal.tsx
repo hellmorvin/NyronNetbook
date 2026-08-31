@@ -56,7 +56,7 @@ export const UserManualGuideModal: React.FC = () => {
             </div>
             <div>
               <h2 className="text-base font-bold text-white tracking-wide">
-                Руководство пользователя NyronNotebook
+                Руководство пользователя НейроноБлокнот
               </h2>
               <p className="text-xs text-[#94a3b8]">
                 Подробная инструкция по всем возможностям и модулям приложения

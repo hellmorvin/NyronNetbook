@@ -52,7 +52,7 @@ export const MobileDrawer: React.FC = () => {
               
             </div>
             <div>
-              <h2 className="text-sm font-bold text-white leading-tight">NyronNotebook</h2>
+              <h2 className="text-sm font-bold text-white leading-tight">НейроноБлокнот</h2>
               <span className="text-[10px] text-[#8052ff] font-medium">База знаний</span>
             </div>
           </div>

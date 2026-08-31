@@ -1,8 +1,8 @@
 # Security & Intellectual Property Policy
 
-## 🛡️ Security Architecture of NyronNotebook
+## 🛡️ Security Architecture of NeyroNetbook
 
-NyronNotebook is engineered with a strict **Local-First, Zero-Knowledge** security paradigm:
+NeyroNetbook is engineered with a strict **Local-First, Zero-Knowledge** security paradigm:
 
 1. **Zero-Telemetry & Zero-Cloud Storage:**
    - No user notes, finance records, shift schedules, or vault keys are ever sent to external cloud servers.
@@ -26,6 +26,6 @@ The source code, trademarks, icons, UI components, and branding are the intellec
 
 ## 🔒 Reporting a Vulnerability
 
-If you discover a security issue or vulnerability in NyronNotebook, please report it privately:
+If you discover a security issue or vulnerability in NeyroNetbook, please report it privately:
 - Open a private security advisory via GitHub Security tab or contact the maintainer.
 - We appreciate responsible disclosure and address verified vulnerabilities promptly.

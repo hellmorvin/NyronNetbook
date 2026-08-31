@@ -76,7 +76,7 @@ export const TopTabBar: React.FC = () => {
         >
           <NeuralNotebookLogo size={20} animated={false} glow={false} />
           <span className="text-xs font-bold text-white tracking-wide group-hover:text-[#7c5cff] transition-colors">
-            NyronNotebook
+            НейроноБлокнот
           </span>
         </button>
 

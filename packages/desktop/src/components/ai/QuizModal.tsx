@@ -23,7 +23,7 @@ interface Flashcard {
 const SAMPLE_QUIZ: Flashcard[] = [
   {
     topic: 'Основы',
-    question: 'Как связывать заметки между собой в NyronNotebook?',
+    question: 'Как связывать заметки между собой в НейроноБлокнот?',
     options: [
       'Через вики-ссылки [[Название заметки]]',
       'Только через экспорт файлов',

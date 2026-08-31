@@ -136,7 +136,7 @@ export const SettingsModal: React.FC = () => {
           <div className="flex items-center gap-3">
             <NeuralNotebookLogo size={22} glow={false} />
             <div>
-              <h2 className="text-sm font-bold text-white tracking-wide">Параметры NyronNotebook</h2>
+              <h2 className="text-sm font-bold text-white tracking-wide">Параметры NeyroNetbook</h2>
               <p className="text-[11px] text-[#94a3b8]">Настройка тем, внешнего вида, P2P синхронизации и хранилища</p>
             </div>
           </div>
@@ -766,7 +766,7 @@ export const SettingsModal: React.FC = () => {
                   <NeuralNotebookLogo size={56} glow animated={false} />
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-bold text-white tracking-tight">NyronNotebook</h3>
+                      <h3 className="text-lg font-bold text-white tracking-tight">NeyroNetbook</h3>
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#7c5cff]/20 text-[#7c5cff] border border-[#7c5cff]/30">
                         v2.5.0 Pro
                       </span>
@@ -865,7 +865,7 @@ export const SettingsModal: React.FC = () => {
                 {/* Footer Buttons */}
                 <div className="flex items-center justify-between pt-1">
                   <span className="text-[11px] text-[#64748b]">
-                    Разработано NyronNotebook Team • Лицензия MIT
+                    Разработано NeyroNetbook Team • Лицензия MIT
                   </span>
                   <button
                     onClick={() => {

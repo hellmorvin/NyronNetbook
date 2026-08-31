@@ -111,8 +111,8 @@ const defaultWelcomeNotes: Neuron[] = [
   createFullNeuron({
     id: 'neu_welcome_mobile',
     filePath: 'Инструкция/Добро пожаловать.md',
-    title: 'Добро пожаловать в NyronNotebook Mobile',
-    content: `# Добро пожаловать в NyronNotebook Mobile!
+    title: 'Добро пожаловать в НейроноБлокнот Mobile',
+    content: `# Добро пожаловать в НейроноБлокнот Mobile!
 
 Это ваша персональная мобильная база знаний и система планирования.
 
@@ -139,12 +139,12 @@ const defaultWelcomeNotes: Neuron[] = [
 Вы можете соединять заметки двусторонними ссылками. 
 Просто введите \`[[\` и выберите нужную заметку!
 
-Ссылка обратно: [[Добро пожаловать в NyronNotebook Mobile]].
+Ссылка обратно: [[Добро пожаловать в НейроноБлокнот Mobile]].
 `,
     tags: ['граф', 'синапсы'],
     pinned: false,
     learningState: 'mastered',
-    wikiLinks: ['Добро пожаловать в NyronNotebook Mobile'],
+    wikiLinks: ['Добро пожаловать в НейроноБлокнот Mobile'],
     backlinks: ['neu_welcome_mobile'],
   }),
 ];

@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="./packages/desktop/public/logo.png" width="130" height="130" alt="NyronNotebook Logo" />
+<img src="./packages/desktop/public/logo.png" width="130" height="130" alt="NeyroNetbook Logo" />
 
-# NyronNotebook 🧠
+# NeyroNetbook 🧠
 
 **Ваш персональный цифровой мозг, 3D/2D граф знаний, планировщик рабочих смен и финансовый менеджер**
 
@@ -38,7 +38,7 @@
 
 ### 🖥️ Десктопная версия (Windows / macOS / Linux) — Интерактивный 3D/2D Нейро-Граф
 <a href="./scrinshot/2.png" target="_blank">
-  <img src="./scrinshot/2.png" width="940" alt="NyronNotebook Desktop Interface" style="border-radius: 12px; border: 1px solid rgba(124, 92, 255, 0.4); box-shadow: 0 16px 45px rgba(0,0,0,0.8);" />
+  <img src="./scrinshot/2.png" width="940" alt="NeyroNetbook Desktop Interface" style="border-radius: 12px; border: 1px solid rgba(124, 92, 255, 0.4); box-shadow: 0 16px 45px rgba(0,0,0,0.8);" />
 </a>
 
 <p align="center">
@@ -53,7 +53,7 @@
 
 ### 📱 Мобильный Клиент (Android / iOS) — Сенсорный Граф и Управление на ходу
 <a href="./scrinshot/1.png" target="_blank">
-  <img src="./scrinshot/1.png" width="360" alt="NyronNotebook Mobile Interface" style="border-radius: 20px; border: 1px solid rgba(59, 130, 246, 0.4); box-shadow: 0 16px 45px rgba(0,0,0,0.8);" />
+  <img src="./scrinshot/1.png" width="360" alt="NeyroNetbook Mobile Interface" style="border-radius: 20px; border: 1px solid rgba(59, 130, 246, 0.4); box-shadow: 0 16px 45px rgba(0,0,0,0.8);" />
 </a>
 
 <p align="center">
@@ -73,8 +73,8 @@
 
 | Платформа | Формат пакета | Прямая ссылка | Описание |
 | :--- | :--- | :--- | :--- |
-| 🪟 **Windows 10 / 11** | `.exe` (Portable) | **[Скачать для Windows](https://github.com/hellmorvin/NyronNetbook/releases/download/v1.0.0/NyronNotebook-1.0.0.exe)** | Автономный запуск x64 без установки |
-| 📱 **Android** | `.apk` (Signed) | **[Скачать NyronNotebook.apk](https://github.com/hellmorvin/NyronNetbook/releases/download/v1.0.0/NyronNotebook.apk)** | Мобильный релизный APK (Android 8.0 - 15+) |
+| 🪟 **Windows 10 / 11** | `.exe` (Portable) | **[Скачать для Windows](https://github.com/hellmorvin/NyronNetbook/releases/download/v1.0.0/NeyroNetbook-1.0.0.exe)** | Автономный запуск x64 без установки |
+| 📱 **Android** | `.apk` (Signed) | **[Скачать NeyroNetbook.apk](https://github.com/hellmorvin/NyronNetbook/releases/download/v1.0.0/NeyroNetbook.apk)** | Мобильный релизный APK (Android 8.0 - 15+) |
 | 🐧 **Linux** | `.AppImage` / `.deb` | **[Скачать для Linux](https://github.com/hellmorvin/NyronNetbook/releases/tag/v1.0.0)** | Ubuntu, Debian, Fedora, Arch Linux |
 | 🍏 **macOS (Apple)** | `.dmg` / `.zip` | **[Скачать для macOS](https://github.com/hellmorvin/NyronNetbook/releases/tag/v1.0.0)** | Apple Silicon (M1-M4) и Intel x64 |
 | 🍎 **iOS (Apple)** | `Xcode Workspace` | **[Исходный проект iOS](https://github.com/hellmorvin/NyronNetbook/tree/main/packages/mobile/ios)** | Проект для компиляции в Xcode на iPhone / iPad |
@@ -167,7 +167,7 @@
 ## 📦 Структура Монорепозитория
 
 ```text
-NyronNotebook/
+NeyroNetbook/
 ├── packages/
 │   ├── desktop/            # Десктопный клиент (Electron + React 18 + Vite)
 │   │   ├── electron/       # Главный процесс Electron, оконный менеджер, безопасность
@@ -241,7 +241,7 @@ npm run build:apk           # Подписанный Android APK (папка rel
 Вы можете поддержать проект следующими способами:
 
 1. Поставьте **Звезду ⭐** этому репозиторию (в верхнем правом углу этой страницы).
-2. Вы можете материально поддержать оригинального разработчика **NyronNotebook (morvin)**:
+2. Вы можете материально поддержать оригинального разработчика **NeyroNetbook (morvin)**:
    - 👉 **[Открыть DonationAlerts для поддержки morvin](https://www.donationalerts.com/r/morvin)**
    - 🪙 **USDT (TRC-20):** `TV59nxuwqqGxeappjPsRAZNdpzs6E7J754`
 
@@ -254,5 +254,5 @@ npm run build:apk           # Подписанный Android APK (папка rel
 Проект распространяется под открытой лицензией **MIT License** с расширенным положением о защите авторского бренда. Подробнее см. файл [LICENSE](LICENSE).
 
 <div align="center">
-  <sub>Разработано для продуктивности и свободы мышления <b>NyronNotebook</b> © 2026. Автор проекта: <a href="https://github.com/hellmorvin">@hellmorvin</a></sub>
+  <sub>Разработано для продуктивности и свободы мышления <b>NeyroNetbook</b> © 2026. Автор проекта: <a href="https://github.com/hellmorvin">@hellmorvin</a></sub>
 </div>

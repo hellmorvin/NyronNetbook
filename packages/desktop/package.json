@@ -1,8 +1,8 @@
 {
   "name": "@axon/desktop",
   "version": "1.0.0",
-  "description": "NyronNotebook Desktop - Personal Second Brain & Knowledge Graph",
-  "author": "NyronNotebook Team",
+  "description": "NeyroNetbook Desktop - Personal Second Brain & Knowledge Graph",
+  "author": "NeyroNetbook Team",
   "private": true,
   "type": "module",
   "main": "./electron/main.cjs",

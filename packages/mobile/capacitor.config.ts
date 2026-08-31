@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.nyronnotebook.mobile',
-  appName: 'NyronNotebook',
+  appName: 'NeyroNetbook',
   webDir: 'dist',
   server: {
     androidScheme: 'https',
