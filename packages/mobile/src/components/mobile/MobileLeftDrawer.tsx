@@ -64,12 +64,13 @@ export const MobileLeftDrawer: React.FC<MobileLeftDrawerProps> = ({ isOpen, onCl
   };
 
   // Group notes by folder
+  const knownFolderNames = new Set(folders.map((f) => f.name));
   const folderMap = new Map<string, typeof neurons>();
   const rootNotes: typeof neurons = [];
 
   neurons.forEach((n) => {
-    const parts = n.filePath ? n.filePath.split('/') : ['Default'];
-    if (parts.length > 1) {
+    const parts = n.filePath ? n.filePath.split('/') : [];
+    if (parts.length > 1 && knownFolderNames.has(parts[0]!)) {
       const fName = parts[0]!;
       if (!folderMap.has(fName)) folderMap.set(fName, []);
       folderMap.get(fName)!.push(n);

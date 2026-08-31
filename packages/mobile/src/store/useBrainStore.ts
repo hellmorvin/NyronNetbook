@@ -1329,7 +1329,11 @@ export const useBrainStore = create<BrainState>()(
 
       addNeuron: (rawTitle = 'Без названия', content = '', folderName) => {
         const defaultBody = content || '';
-        const folder = folderName || 'Neuroscience';
+        const currentFolders = get().folders || [];
+        let folder = folderName;
+        if (!folder && currentFolders.length > 0) {
+          folder = currentFolders[0].name;
+        }
 
         // Auto-number duplicate or default note names
         let title = rawTitle.trim() || 'Без названия';
@@ -1351,7 +1355,7 @@ export const useBrainStore = create<BrainState>()(
         const neuronId = `neu_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
         const newNeuron: Neuron = {
           id: neuronId,
-          filePath: `${folder}/${title.replace(/[^a-zA-Z0-9а-яА-ЯёЁ_-]/g, '_')}.md`,
+          filePath: folder ? `${folder}/${title.replace(/[^a-zA-Z0-9а-яА-ЯёЁ_-]/g, '_')}.md` : `${title.replace(/[^a-zA-Z0-9а-яА-ЯёЁ_-]/g, '_')}.md`,
           title,
           content: defaultBody,
           rawContent: defaultBody,

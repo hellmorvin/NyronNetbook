@@ -306,9 +306,19 @@ export const FileTreeSidebar: React.FC = () => {
   }, [sidebarSearchQuery, searchEngine]);
 
   // Group notes by folder prefix for explorer
+  const knownFolderNames = React.useMemo(() => {
+    return new Set(folders.map((f) => f.name));
+  }, [folders]);
+
+  // Group notes by folder prefix for explorer - unmatched folders fallback to root!
   const rootNotes = React.useMemo(() => {
-    return visibleNeurons.filter((n) => !(n.filePath || '').includes('/'));
-  }, [visibleNeurons]);
+    return visibleNeurons.filter((n) => {
+      const p = n.filePath || '';
+      if (!p.includes('/')) return true;
+      const fName = p.split('/')[0];
+      return !knownFolderNames.has(fName);
+    });
+  }, [visibleNeurons, knownFolderNames]);
 
   const folderGroups = React.useMemo(() => {
     return folders.map((folder) => ({
