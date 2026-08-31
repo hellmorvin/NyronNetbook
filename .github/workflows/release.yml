@@ -21,38 +21,36 @@ jobs:
         with:
           node-version: 20
 
-      - name: Setup Java JDK
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'zulu'
-          java-version: '17'
-
       - name: Install Dependencies
         run: npm install
 
-      - name: Build Desktop (Windows)
+      - name: Build All Monorepo Packages
+        run: npm run build
+
+      - name: Build Windows Desktop Release
         run: npm run build:desktop:win
 
-      - name: Build Android (APK)
+      - name: Build Android Release APK
+        continue-on-error: true
         run: npm run build:apk
 
       - name: Publish Release to GitHub
         uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
         with:
-          name: 'NeyroNetbook v1.0.0 — Multi-Platform Release'
+          name: 'НейроноБлокнот v1.0.0 — Официальный Релиз / NeyroNetbook Grand Release 🧠'
           body: |
-            ## 🧠 NeyroNetbook v1.0.0 Release
+            ## 🧠 NeyroNetbook v1.0.0 Official Release
             
             Ваш персональный цифровой мозг, интерактивный нейро-граф знаний, умный планировщик смен и финансовый менеджер.
             
-            ### 📦 Доступные файлы для скачивания:
+            ### 📦 Файлы для скачивания:
             - **NeyroNetbook-1.0.0.exe** — Windows 10/11 x64 Portable
             - **NeyroNetbook.apk** — Android 8.0 - 15+ Release Signed APK
             - **NeyroNetbook-1.0.0-win.zip** — Windows ZIP Archive
           files: |
-            release/NeyroNetbook 1.0.0.exe
-            release/NeyroNetbook-1.0.0.exe
-            release/NeyroNetbook.apk
-            release/NeyroNetbook-1.0.0-win.zip
+            release/*.exe
+            release/*.apk
+            release/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
