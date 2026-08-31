@@ -1,7 +1,12 @@
-MIT License
+================================================================================
+                    NYRONNOTEBOOK SOFTWARE LICENSE & USAGE TERMS
+================================================================================
+Copyright (c) 2026 hellmorvin (@hellmorvin) and the NyronNotebook Project Authors.
+All Rights Reserved.
 
-Copyright (c) 2026 hellmorvin (NyronNotebook Team)
-
+--------------------------------------------------------------------------------
+1. OPEN SOURCE LICENSE (MIT)
+--------------------------------------------------------------------------------
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
@@ -12,6 +17,35 @@ furnished to do so, subject to the following conditions:
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
 
+--------------------------------------------------------------------------------
+2. TRADEMARK & BRAND PROTECTION POLICY
+--------------------------------------------------------------------------------
+The names "NyronNotebook", "NyronNetbook", "hellmorvin", the official branding,
+logos, icons, and visual UI styling are protected proprietary intellectual assets 
+of the author (@hellmorvin). 
+
+This license does NOT grant permission to:
+  (a) Use the official name, logo, or author persona in misleading commercial 
+      re-distributions without explicit written consent.
+  (b) Distribute altered binary builds claiming to be official or endorsed 
+      by the original author (@hellmorvin).
+  (c) Remove author attribution from the About dialogs, documentation, or code 
+      credits in downstream forks.
+
+--------------------------------------------------------------------------------
+3. OFFICIAL REPOSITORY & ANTI-MALWARE VERIFICATION
+--------------------------------------------------------------------------------
+Official source code and verified release binaries are hosted exclusively at:
+  https://github.com/hellmorvin/NyronNetbook
+
+Any third-party redistribution, Telegram channel archive, or YouTube re-upload
+not verified by the author's PGP/GitHub signature must be treated with caution.
+The author assumes zero liability for modified binaries acquired from untrusted
+third-party sources.
+
+--------------------------------------------------------------------------------
+4. DISCLAIMER OF WARRANTY & LIMITATION OF LIABILITY
+--------------------------------------------------------------------------------
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -19,3 +53,4 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+================================================================================
