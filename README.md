@@ -171,7 +171,7 @@ NeyroNetbook/
 ├── packages/
 │   ├── desktop/            # Десктопный клиент (Electron + React 18 + Vite)
 │   │   ├── electron/       # Главный процесс Electron, оконный менеджер, безопасность
-│   │   └── src/            # Интерфейс, 3D Граф, Редакторы, Финансы, Смены
+│   │   └── src/            # Интерфейс, Нейро-Граф, Редакторы, Финансы, Смены
 │   ├── mobile/             # Мобильный клиент (Capacitor + Android + iOS)
 │   │   ├── android/        # Нативный проект Android Studio с Gradle
 │   │   └── src/            # Адаптивный сенсорный UI и мобильный граф

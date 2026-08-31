@@ -30,11 +30,11 @@
     "neural-notes",
     "nyron-notebook",
     "knowledge-base",
-    "3d-brain",
+    "neural-graph",
     "obsidian",
     "p2p-sync",
     "ai"
   ],
-  "author": "NyronNotebook Team",
+  "author": "hellmorvin",
   "license": "MIT"
 }
