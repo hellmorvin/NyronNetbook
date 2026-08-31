@@ -46,19 +46,17 @@
 
 ---
 
-## 📷 Скриншоты работы / Preview
+## 📷 Скриншоты интерфейса / Preview
 
 <div align="center">
 
-| 🌌 3D / 2D Нейро-Граф Знаний | 📝 Живой Markdown / Word Редактор | 📅 График Смен и Расчет Дохода |
-| :---: | :---: | :---: |
-| <img src="./docs/screenshots/graph-desktop.png" width="300" alt="3D Нейро-Граф" /> | <img src="./docs/screenshots/editor-desktop.png" width="300" alt="Редактор" /> | <img src="./docs/screenshots/calendar-desktop.png" width="300" alt="Календарь смен" /> |
-| **Интерактивный синаптический граф** | **Вики-ссылки `[[Связи]]` и таблицы** | **Расчет почасовой ставки и смен 2/2, 3/3** |
+### 🖥️ Десктопная версия (Интерактивный 3D/2D Граф и Панель Управления)
+<img src="./scrinshot/2.png" width="920" alt="NyronNotebook Desktop Interface" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);" />
 
-| 💰 Финансовый Менеджер и Вклады | 📱 Мобильный Граф (Android) | 📱 Мобильный Финансовый Трекер |
-| :---: | :---: | :---: |
-| <img src="./docs/screenshots/finance-desktop.png" width="300" alt="Финансы" /> | <img src="./docs/screenshots/mobile-graph.png" width="300" alt="Мобильный Граф" /> | <img src="./docs/screenshots/mobile-finance.png" width="300" alt="Мобильные Финансы" /> |
-| **Капитализация процентов и бюджет** | **Сенсорный граф и быстрые мысли** | **Учет расходов и целей на ходу** |
+<br/><br/>
+
+### 📱 Мобильное приложение (Сенсорный Граф и Управление на ходу)
+<img src="./scrinshot/1.png" width="380" alt="NyronNotebook Mobile Interface" style="border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);" />
 
 </div>
 
