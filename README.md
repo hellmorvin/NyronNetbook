@@ -73,10 +73,11 @@
 
 | Платформа | Формат пакета | Прямая ссылка | Описание |
 | :--- | :--- | :--- | :--- |
-| 🪟 **Windows 10 / 11** | `.exe` (Portable) | **[Скачать для Windows](https://github.com/hellmorvin/NyronNetbook/releases/download/v1.0.0/NeyroNetbook-1.0.0.exe)** | Автономный запуск x64 без установки |
-| 📱 **Android** | `.apk` (Signed) | **[Скачать NeyroNetbook.apk](https://github.com/hellmorvin/NyronNetbook/releases/download/v1.0.0/NeyroNetbook.apk)** | Мобильный релизный APK (Android 8.0 - 15+) |
-| 🐧 **Linux** | `.AppImage` / `.deb` | **[Скачать для Linux](https://github.com/hellmorvin/NyronNetbook/releases/tag/v1.0.0)** | Ubuntu, Debian, Fedora, Arch Linux |
-| 🍏 **macOS (Apple)** | `.dmg` / `.zip` | **[Скачать для macOS](https://github.com/hellmorvin/NyronNetbook/releases/tag/v1.0.0)** | Apple Silicon (M1-M4) и Intel x64 |
+| 🪟 **Windows 10 / 11** | `.exe` (Portable) | **[Скачать для Windows (.exe)](https://github.com/hellmorvin/NyronNetbook/releases/download/v1.0.0/NeyroNetbook.1.0.0.exe)** | Автономный запуск x64 без установки |
+| 📱 **Android** | `.apk` (Signed) | **[Скачать для Android (.apk)](https://github.com/hellmorvin/NyronNetbook/releases/download/v1.0.0/NeyroNetbook.apk)** | Мобильный релизный APK (Android 8.0 - 15+) |
+| 🪟 **Windows (Zip)** | `.zip` (Archive) | **[Скачать для Windows (.zip)](https://github.com/hellmorvin/NyronNetbook/releases/download/v1.0.0/NeyroNetbook-1.0.0-win.zip)** | Полный архив программы в zip |
+| 🐧 **Linux** | `.AppImage` / `.deb` | **[Страница релиза v1.0.0](https://github.com/hellmorvin/NyronNetbook/releases/tag/v1.0.0)** | Ubuntu, Debian, Fedora, Arch Linux |
+| 🍏 **macOS (Apple)** | `.dmg` / `.zip` | **[Страница релиза v1.0.0](https://github.com/hellmorvin/NyronNetbook/releases/tag/v1.0.0)** | Apple Silicon (M1-M4) и Intel x64 |
 | 🍎 **iOS (Apple)** | `Xcode Workspace` | **[Исходный проект iOS](https://github.com/hellmorvin/NyronNetbook/tree/main/packages/mobile/ios)** | Проект для компиляции в Xcode на iPhone / iPad |
 
 ---
