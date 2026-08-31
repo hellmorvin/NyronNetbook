@@ -32,23 +32,36 @@
 
 ---
 
-## 📷 Скриншоты Интерфейса / Preview
+## 📷 Скриншоты Интерфейса / Interface Showcase
 
 <div align="center">
 
-### 🖥️ Десктопная версия (3D/2D Нейро-Граф и Панель Управления)
+### 🖥️ Десктопная версия (Windows / macOS / Linux) — Интерактивный 3D/2D Нейро-Граф
 <a href="./scrinshot/2.png" target="_blank">
-  <img src="./scrinshot/2.png" width="940" alt="NyronNotebook Desktop Interface" style="border-radius: 12px; border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 14px 45px rgba(0,0,0,0.6);" />
+  <img src="./scrinshot/2.png" width="940" alt="NyronNotebook Desktop Interface" style="border-radius: 12px; border: 1px solid rgba(124, 92, 255, 0.4); box-shadow: 0 16px 45px rgba(0,0,0,0.8);" />
 </a>
-<p><sub>⚡ <i>Интерактивная физика Three.js • 4 пресета компоновки • Дерево файлов • Obsidian Markdown • Система тегов</i></sub></p>
+
+<p align="center">
+  <code>⚡ WebGL 2.0 Engine</code> &nbsp;•&nbsp; 
+  <code>🌐 Three.js 3D Physics</code> &nbsp;•&nbsp; 
+  <code>📝 Obsidian Markdown</code> &nbsp;•&nbsp; 
+  <code>📊 Excel & Word Ribbon</code> &nbsp;•&nbsp; 
+  <code>🏷️ Multi-Tag Filters</code>
+</p>
 
 <br/>
 
-### 📱 Мобильное приложение (Сенсорный Граф и Управление на ходу)
+### 📱 Мобильный Клиент (Android / iOS) — Сенсорный Граф и Управление на ходу
 <a href="./scrinshot/1.png" target="_blank">
-  <img src="./scrinshot/1.png" width="370" alt="NyronNotebook Mobile Interface" style="border-radius: 18px; border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 14px 45px rgba(0,0,0,0.6);" />
+  <img src="./scrinshot/1.png" width="360" alt="NyronNotebook Mobile Interface" style="border-radius: 20px; border: 1px solid rgba(59, 130, 246, 0.4); box-shadow: 0 16px 45px rgba(0,0,0,0.8);" />
 </a>
-<p><sub>⚡ <i>Сенсорный граф • Быстрый поиск • Нижняя панель навигации • Локальное P2P шифрование</i></sub></p>
+
+<p align="center">
+  <code>👆 Сенсорный граф</code> &nbsp;•&nbsp; 
+  <code>🔍 Быстрый поиск</code> &nbsp;•&nbsp; 
+  <code>🧭 Нижняя навигация</code> &nbsp;•&nbsp; 
+  <code>🔒 Приватный P2P Sync</code>
+</p>
 
 </div>
 

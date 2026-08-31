@@ -1,3 +1,25 @@
+# Secrets, API Keys & Environment Variables
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.cert
+*.p12
+*.pfx
+*.keystore
+*.jks
+local.properties
+secrets.json
+*.credentials*
+*.secret*
+
+# System & Scratch
+scratch/
+.system_generated/
+*.tmp
+*.temp
+
 # Logs
 logs
 *.log
@@ -7,15 +29,23 @@ yarn-error.log*
 
 # Dependencies
 node_modules/
+.pnp
+.pnp.js
 
-# Build outputs
+# Build outputs & Release Artifacts
 dist/
 dist-electron/
 release/
 build/
 out/
+*.apk
+*.aab
+*.exe
+*.dmg
+*.AppImage
+*.deb
 
-# Android
+# Android & iOS Local Paths
 packages/mobile/android/.gradle/
 packages/mobile/android/build/
 packages/mobile/android/app/build/
@@ -23,10 +53,6 @@ packages/mobile/android/capacitor-android/build/
 packages/mobile/android/capacitor-cordova-android-plugins/build/
 packages/mobile/android/.idea/
 packages/mobile/android/local.properties
-*.apk
-release/
-
-# iOS / Apple
 packages/mobile/ios/App/Pods/
 packages/mobile/ios/App/build/
 packages/mobile/ios/App/Podfile.lock
@@ -35,7 +61,7 @@ packages/mobile/ios/App/Podfile.lock
 .DS_Store
 Thumbs.db
 
-# IDE
+# IDE & Configs
 .vscode/*
 !.vscode/settings.json
 .idea/
