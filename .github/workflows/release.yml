@@ -1,0 +1,58 @@
+name: Multi-Platform Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build Desktop (Windows)
+        run: npm run build:desktop:win
+
+      - name: Build Android (APK)
+        run: npm run build:apk
+
+      - name: Publish Release to GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          name: 'NyronNotebook v1.0.0 — Multi-Platform Release'
+          body: |
+            ## 🧠 NyronNotebook v1.0.0 Release
+            
+            Ваш персональный цифровой мозг, 3D/2D граф знаний, умный планировщик смен и финансовый менеджер.
+            
+            ### 📦 Доступные файлы для скачивания:
+            - **NyronNotebook-1.0.0.exe** — Windows 10/11 x64 Portable
+            - **NyronNotebook.apk** — Android 8.0 - 15+ Release Signed APK
+            - **NyronNotebook-1.0.0-win.zip** — Windows ZIP Archive
+          files: |
+            release/NyronNotebook 1.0.0.exe
+            release/NyronNotebook-1.0.0.exe
+            release/NyronNotebook.apk
+            release/NyronNotebook-1.0.0-win.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
