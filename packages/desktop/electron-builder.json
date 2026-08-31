@@ -1,0 +1,80 @@
+{
+  "appId": "com.nyronnotebook.app",
+  "productName": "NyronNotebook",
+  "electronVersion": "34.5.8",
+  "copyright": "Copyright © 2026 NyronNotebook Team",
+  "directories": {
+    "output": "../../release"
+  },
+  "files": [
+    "dist/**/*",
+    "electron/**/*",
+    "package.json"
+  ],
+  "win": {
+    "target": [
+      {
+        "target": "portable",
+        "arch": [
+          "x64"
+        ]
+      },
+      {
+        "target": "zip",
+        "arch": [
+          "x64"
+        ]
+      }
+    ],
+    "icon": "public/logo.png",
+    "signAndEditExecutable": false,
+    "forceCodeSigning": false
+  },
+  "mac": {
+    "target": [
+      {
+        "target": "dmg",
+        "arch": [
+          "x64",
+          "arm64",
+          "universal"
+        ]
+      },
+      {
+        "target": "zip",
+        "arch": [
+          "x64",
+          "arm64",
+          "universal"
+        ]
+      }
+    ],
+    "category": "public.app-category.productivity",
+    "icon": "public/logo.png",
+    "darkModeSupport": true
+  },
+  "linux": {
+    "target": [
+      {
+        "target": "AppImage",
+        "arch": [
+          "x64"
+        ]
+      },
+      {
+        "target": "deb",
+        "arch": [
+          "x64"
+        ]
+      },
+      {
+        "target": "tar.gz",
+        "arch": [
+          "x64"
+        ]
+      }
+    ],
+    "category": "Office;Utility;",
+    "icon": "public/logo.png"
+  }
+}

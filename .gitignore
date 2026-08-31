@@ -1,0 +1,41 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+dist-electron/
+release/
+build/
+out/
+
+# Android
+packages/mobile/android/.gradle/
+packages/mobile/android/build/
+packages/mobile/android/app/build/
+packages/mobile/android/capacitor-android/build/
+packages/mobile/android/capacitor-cordova-android-plugins/build/
+packages/mobile/android/.idea/
+packages/mobile/android/local.properties
+*.apk
+release/
+
+# iOS / Apple
+packages/mobile/ios/App/Pods/
+packages/mobile/ios/App/build/
+packages/mobile/ios/App/Podfile.lock
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/*
+!.vscode/settings.json
+.idea/

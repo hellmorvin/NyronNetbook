@@ -1,0 +1,52 @@
+{
+  "name": "@axon/desktop",
+  "version": "1.0.0",
+  "description": "NyronNotebook Desktop - Personal Second Brain & Knowledge Graph",
+  "author": "NyronNotebook Team",
+  "private": true,
+  "type": "module",
+  "main": "./electron/main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "start": "electron ./electron/main.cjs",
+    "app": "concurrently -k -s first \"vite\" \"wait-on tcp:3000 && electron ./electron/main.cjs\"",
+    "electron:build": "vite build && electron-builder",
+    "build:win": "vite build && electron-builder --win",
+    "build:mac": "vite build && electron-builder --mac",
+    "build:linux": "vite build && electron-builder --linux",
+    "build:all": "vite build && electron-builder -mwl"
+  },
+  "dependencies": {
+    "@axon/shared": "*",
+    "@react-three/drei": "^9.121.4",
+    "@react-three/fiber": "^8.17.14",
+    "canvas-confetti": "^1.9.4",
+    "clsx": "^2.1.1",
+    "d3-force-3d": "^3.0.5",
+    "lucide-react": "^1.16.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwind-merge": "^3.0.1",
+    "three": "^0.173.0",
+    "zustand": "^5.0.3"
+  },
+  "devDependencies": {
+    "@types/canvas-confetti": "^1.9.0",
+    "@types/node": "^22.10.1",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@types/three": "^0.173.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "concurrently": "^9.1.2",
+    "electron": "34.5.8",
+    "electron-builder": "^25.1.8",
+    "postcss": "^8.5.1",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.2",
+    "vite": "^6.1.0",
+    "wait-on": "^8.0.2"
+  }
+}

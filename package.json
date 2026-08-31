@@ -1,0 +1,40 @@
+{
+  "name": "nyron-notebook-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "start": "electron ./packages/desktop/electron/main.cjs",
+    "desktop": "electron ./packages/desktop/electron/main.cjs",
+    "electron": "electron ./packages/desktop/electron/main.cjs",
+    "dev": "npm run app --workspace=@axon/desktop",
+    "dev:mobile": "npm run dev --workspace=@axon/mobile",
+    "mobile:sync": "npm run cap:sync --workspace=@axon/mobile",
+    "mobile:android": "npm run cap:open:android --workspace=@axon/mobile",
+    "mobile:ios": "npx cap open ios --workspace=@axon/mobile",
+    "build:shared": "npm run build --workspace=@axon/shared",
+    "build:desktop": "npm run build --workspace=@axon/desktop",
+    "build:desktop:win": "npm run build:win --workspace=@axon/desktop",
+    "build:desktop:linux": "npm run build:linux --workspace=@axon/desktop",
+    "build:desktop:mac": "npm run build:mac --workspace=@axon/desktop",
+    "build:mobile": "npm run build --workspace=@axon/mobile",
+    "build:apk": "node scripts/build-apk.mjs",
+    "run:emulator": "node scripts/run-emulator.mjs",
+    "build": "npm run build:shared && npm run build:desktop && npm run build:mobile",
+    "test": "npm run test --workspace=@axon/shared",
+    "dev:web": "npm run dev --workspace=@axon/desktop"
+  },
+  "keywords": [
+    "neural-notes",
+    "nyron-notebook",
+    "knowledge-base",
+    "3d-brain",
+    "obsidian",
+    "p2p-sync",
+    "ai"
+  ],
+  "author": "NyronNotebook Team",
+  "license": "MIT"
+}

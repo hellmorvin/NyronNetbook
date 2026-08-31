@@ -1,0 +1,31 @@
+{
+  "name": "@axon/shared",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "diff": "^7.0.0",
+    "gray-matter": "^4.0.3",
+    "js-yaml": "^4.1.0",
+    "minisearch": "^7.1.1"
+  },
+  "devDependencies": {
+    "@types/diff": "^7.0.0",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.10.1",
+    "typescript": "^5.7.2"
+  }
+}

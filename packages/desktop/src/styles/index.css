@@ -1,0 +1,389 @@
+@import './variables.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    overflow: hidden;
+    user-select: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    transform: translateZ(0);
+  }
+
+  /* Selection style */
+  ::selection {
+    background: rgba(124, 92, 255, 0.35);
+    color: #ffffff;
+  }
+}
+
+.app-drag-region {
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+.app-no-drag,
+.app-no-drag button,
+.app-no-drag input,
+.app-no-drag select,
+.app-no-drag a,
+button,
+input,
+select,
+textarea {
+  -webkit-app-region: no-drag;
+}
+
+/* Precision Minimal Smooth Scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(124, 92, 255, 0.5);
+}
+
+/* Glass Panels with Clean Micro-Borders */
+.glass-panel {
+  background: var(--color-surface-glass);
+  backdrop-filter: var(--blur-glass);
+  -webkit-backdrop-filter: var(--blur-glass);
+  border: 1px solid var(--border-default);
+}
+
+.glass-panel-subtle {
+  background: rgba(19, 20, 26, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-subtle);
+}
+
+.glass-panel-elevated {
+  background: rgba(26, 27, 36, 0.9);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.75);
+}
+
+/* Subtle, mature glow effects */
+.glow-iris {
+  box-shadow: 0 0 20px var(--color-iris-glow);
+}
+
+.glow-amber {
+  box-shadow: 0 0 20px var(--color-amber-glow);
+}
+
+/* High Performance Animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(2px) scale(0.995);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.12s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: opacity, transform;
+}
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Obsidian Callout Block Styles */
+.callout {
+  padding: 0.75rem 1rem;
+  margin: 0.75rem 0;
+  border-radius: 0.65rem;
+  border-left-width: 3px;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.callout-note {
+  background: rgba(124, 92, 255, 0.08);
+  border-color: #7c5cff;
+}
+
+.callout-tip {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: #10b981;
+}
+
+.callout-warning {
+  background: rgba(245, 158, 11, 0.08);
+  border-color: #f59e0b;
+}
+
+.callout-info {
+  background: rgba(56, 189, 248, 0.08);
+  border-color: #38bdf8;
+}
+
+.callout-danger {
+  background: rgba(244, 63, 94, 0.08);
+  border-color: #f43f5e;
+}
+
+/* Markdown Table Modernization */
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+th {
+  background: rgba(255, 255, 255, 0.04);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+}
+
+td {
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+/* =========================================================================
+   LIGHT MODE DESIGN SYSTEM - APPLE & LINEAR GRADE VISUAL QUALITY
+   ========================================================================= */
+html.light,
+[data-mode="light"] {
+  --color-bg-primary: #f8fafc;
+  --color-bg-secondary: #ffffff;
+  --color-bg-tertiary: #f1f5f9;
+  --color-bg-elevated: #ffffff;
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #64748b;
+  --color-text-dim: #94a3b8;
+  --border-default: rgba(0, 0, 0, 0.09);
+  --border-subtle: rgba(0, 0, 0, 0.05);
+  --border-strong: rgba(0, 0, 0, 0.15);
+}
+
+html.light body,
+html.light #root,
+[data-mode="light"] body,
+[data-mode="light"] #root {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+/* Universal Background Surfaces in Light Mode (Catch all dark hexes) */
+html.light [class*="bg-[#0"],
+html.light [class*="bg-[#10"],
+html.light [class*="bg-[#11"],
+html.light [class*="bg-[#12"],
+html.light [class*="bg-[#13"],
+html.light [class*="bg-[#14"],
+html.light [class*="bg-[#15"],
+html.light [class*="bg-[#16"],
+html.light [class*="bg-[#17"],
+html.light [class*="bg-[#18"],
+html.light [class*="bg-[#19"],
+html.light [class*="bg-[#1a"],
+html.light [class*="bg-[#1c"],
+html.light [class*="bg-[#20"] {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+/* App Canvas / Viewport Backdrop */
+html.light,
+html.light body,
+html.light #root,
+html.light [class*="bg-[#0d0e1"],
+html.light [class*="bg-[#0a0b0"],
+html.light [class*="bg-[#090a0"],
+html.light [class*="bg-[#0b0c1"],
+html.light [class*="bg-[#0e0f1"],
+html.light [class*="bg-[#0f101"] {
+  background-color: #f8fafc !important;
+}
+
+/* Sidebar and Navigation in Light Mode */
+html.light nav,
+html.light aside,
+html.light header {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* Cards, Modals, Popovers and Elevated Panels */
+html.light [class*="bg-[#11121"],
+html.light [class*="bg-[#12131"],
+html.light [class*="bg-[#13141"],
+html.light [class*="bg-[#14151"],
+html.light [class*="bg-[#16172"],
+html.light [class*="bg-[#17182"],
+html.light [class*="bg-[#18192"],
+html.light [class*="bg-[#191a2"],
+html.light [class*="bg-[#20222"] {
+  background-color: #ffffff !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* Inset Elements, Form Fields, Textareas */
+html.light input:not([type="checkbox"]):not([type="radio"]):not(.bg-transparent),
+html.light textarea:not(.bg-transparent),
+html.light select:not(.bg-transparent),
+html.light select option,
+html.light [class*="bg-[#101117]"] {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* Explicit Transparent Inputs and Textareas */
+html.light input.bg-transparent,
+html.light textarea.bg-transparent,
+html.light select.bg-transparent {
+  background-color: transparent !important;
+  color: #0f172a !important;
+  border-color: transparent !important;
+}
+
+/* Canvas View and Canvas Cards */
+html.light .canvas-card {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.07), 0 2px 6px -1px rgba(0, 0, 0, 0.04) !important;
+}
+
+html.light .canvas-card input {
+  color: #0f172a !important;
+  background-color: transparent !important;
+  font-weight: 700 !important;
+}
+
+html.light .canvas-card textarea {
+  color: #1e293b !important;
+  background-color: transparent !important;
+  line-height: 1.6 !important;
+}
+
+/* Editor and Document Typography in Light Mode */
+html.light .rich-word-content,
+html.light .prose,
+html.light .prose-dark {
+  color: #0f172a !important;
+}
+
+html.light .rich-word-content h1,
+html.light .rich-word-content h2,
+html.light .rich-word-content h3,
+html.light .rich-word-content h4 {
+  color: #020617 !important;
+  font-weight: 700 !important;
+}
+
+html.light .rich-word-content table th {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
+}
+
+html.light .rich-word-content table td {
+  color: #1e293b !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* Text Overrides in Light Mode */
+html.light .text-white,
+html.light [class*="text-[#ffffff]"],
+html.light [class*="text-[#f8fafc]"],
+html.light [class*="text-[#f1f5f9]"] {
+  color: #0f172a !important;
+}
+
+html.light [class*="text-[#e2e8f0]"],
+html.light [class*="text-[#cbd5e1]"],
+html.light [class*="text-[#e0e7ff]"] {
+  color: #1e293b !important;
+}
+
+html.light [class*="text-[#94a3b8]"] {
+  color: #475569 !important;
+}
+
+html.light [class*="text-[#64748b]"] {
+  color: #64748b !important;
+}
+
+html.light [class*="text-[#475569]"] {
+  color: #64748b !important;
+}
+
+/* Universal Borders in Light Mode */
+html.light [class*="border-white"] {
+  border-color: #e2e8f0 !important;
+}
+
+/* Hover States in Light Mode */
+html.light [class*="hover:bg-white"]:hover,
+html.light [class*="hover:bg-[#18192"]:hover,
+html.light [class*="hover:bg-[#17182"]:hover,
+html.light [class*="hover:bg-[#16172"]:hover {
+  background-color: #f1f5f9 !important;
+}
+
+html.light .hover\:text-white:hover {
+  color: #0f172a !important;
+}
+
+/* Modal Backdrops in Light Mode */
+html.light .fixed.bg-black\/80,
+html.light .fixed.bg-black\/70,
+html.light .fixed.bg-black\/60,
+html.light .fixed.bg-black\/50 {
+  background-color: rgba(15, 23, 42, 0.45) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+/* Scrollbars in Light Mode */
+html.light ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25);
+}

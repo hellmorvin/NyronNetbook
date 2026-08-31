@@ -1,0 +1,55 @@
+:root {
+  /* Surface & Backgrounds - Sleek Obsidian Zinc */
+  --color-void: #090a0d;
+  --color-bg-primary: #0d0e12;
+  --color-bg-secondary: #13141a;
+  --color-bg-tertiary: #191a22;
+  --color-bg-elevated: #20222d;
+  
+  --color-surface-glass: rgba(25, 26, 34, 0.65);
+  --color-surface-glass-hover: rgba(35, 37, 48, 0.75);
+  --color-surface-glass-active: rgba(45, 48, 62, 0.85);
+  
+  /* Text & Typography - Crisp Neutral Contrast */
+  --color-bone-white: #f8fafc;
+  --color-text-primary: #e2e8f0;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #64748b;
+  --color-text-dim: #475569;
+  
+  /* Refined Modern Accents (Non-Cartoonish, Sophisticated Palette) */
+  --color-iris: #7c5cff;
+  --color-iris-subtle: rgba(124, 92, 255, 0.15);
+  --color-iris-glow: rgba(124, 92, 255, 0.3);
+  
+  --color-amber: #f59e0b;
+  --color-amber-subtle: rgba(245, 158, 11, 0.15);
+  --color-amber-glow: rgba(245, 158, 11, 0.25);
+  
+  --color-emerald: #10b981;
+  --color-emerald-subtle: rgba(16, 185, 129, 0.15);
+  
+  --color-cyan: #38bdf8;
+  --color-cyan-subtle: rgba(56, 189, 248, 0.15);
+  
+  --color-rose: #f43f5e;
+  --color-rose-subtle: rgba(244, 63, 94, 0.15);
+  
+  /* Borders */
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.10);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --border-iris: rgba(124, 92, 255, 0.4);
+  
+  /* Fonts */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  
+  /* Dimensions & Glassmorphism */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-full: 9999px;
+  --blur-glass: blur(16px);
+}
