@@ -150,23 +150,23 @@ jobs:
       - name: Publish Release to GitHub
         uses: softprops/action-gh-release@v2
         with:
-          name: 'НейроноБлокнот v1.2.0 — Официальный Кроссплатформенный Релиз 🧠'
+          name: 'НейроноБлокнот v1.1.0 — Официальный Кроссплатформенный Релиз 🧠'
           body: |
-            ## 🧠 NeyroNetbook v1.2.0 Official Multiplatform Release
+            ## 🧠 NeyroNetbook v1.1.0 Official Multiplatform Release
             
             Ваш персональный цифровой мозг, интерактивный D3 нейро-граф знаний, сменный календарь, финансовый менеджер и прямая офлайн P2P-синхронизация.
             
-            ### 🚀 Главные нововведения v1.2.0:
+            ### 🚀 Главные нововведения v1.1.0:
             - **⚡ LAN P2P Синхронизация**: прямой защищенный обмен базой знаний между ПК и мобильными устройствами по локальной сети Wi-Fi/Hotspot без интернета.
             - **🛡️ Вечное Хранилище (Eternal Vault Persistence)**: надежная запись `vault_state.json` и экспорт всех заметок в чистый Markdown `.md`.
             - **📊 Глубокая финансовая аналитика и Инспектор Дня**: быстрый просмотр смен по двойному тапу, инспектор заработка в свободном пространстве, гибкий финансовый модуль.
             - **📱 Кроссплатформенность**: полная оптимизация для Windows (x64 Portable/Zip), Android (Signed APK), Linux (AppImage/Deb), и подготовка проекта для Apple iOS.
-            - **🎨 Версия 1.2.0 Pro**: обновление брендинга, улучшенная эргономика, фиксы форматирования и калькуляторов.
+            - **🎨 Версия 1.1.0 Pro**: обновление брендинга, улучшенная эргономика, фиксы форматирования и калькуляторов.
             
             ### 📦 Файлы релиза:
-            - **Windows**: `NeyroNetbook 1.2.0.exe` (Portable), `NeyroNetbook-1.2.0-win.zip`
+            - **Windows**: `NeyroNetbook 1.1.0.exe` (Portable), `NeyroNetbook-1.1.0-win.zip`
             - **Android**: `NeyroNetbook.apk` (Signed APK для Android 8.0 — 15+)
-            - **Linux**: `NeyroNetbook-1.2.0.AppImage`, `neyronetbook_1.2.0_amd64.deb`
+            - **Linux**: `NeyroNetbook-1.1.0.AppImage`, `neyronetbook_1.1.0_amd64.deb`
             - **iOS**: Нативный Xcode проект в каталоге `packages/mobile/ios`
           files: |
             release/*

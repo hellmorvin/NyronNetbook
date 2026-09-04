@@ -1,10 +1,10 @@
-# 🧠 Релиз NeyroNetbook v1.2.0 — Grand Multiplatform Release
+# 🧠 Релиз NeyroNetbook v1.1.0 — Grand Multiplatform Release
 
-Официальный стабильный релиз кроссплатформенного нейро-блокнота **NeyroNetbook (НейроноБлокнот) v1.2.0 Pro**.
+Официальный стабильный релиз кроссплатформенного нейро-блокнота **NeyroNetbook (НейроноБлокнот) v1.1.0 Pro**.
 
 ---
 
-## 🌟 Что нового в версии 1.2.0:
+## 🌟 Что нового в версии 1.1.0:
 
 ### 1. ⚡ Прямая P2P LAN Синхронизация (Wi-Fi / Hotspot / Bluetooth)
 - Мгновенный обмен и слияние базы знаний, заметок, смен и финансовых данных напрямую между Desktop (ПК) и Mobile (Android / iOS).
@@ -24,11 +24,11 @@
 ### 4. 🌍 Кроссплатформенность и Поддержка Всех ОС
 - **🪟 Windows 10 / 11**: Портативный исполняемый файл `.exe` (не требует установки) и полный `.zip` архив.
 - **🤖 Android**: Подписанный релизный пакет `.apk` с поддержкой Android 8.0 — Android 15+.
-- **🐧 Linux**: Поддержка дистрибутивов Ubuntu, Debian, Fedora, Arch Linux через форматы `.AppImage`, `.deb` и `.tar.gz`.
+- **🐧 Linux**: Поддержка дистрибутивов Ubuntu, Debian, Fedora, Arch Linux через форматы `.tar.gz`, `.AppImage` и `.deb`.
 - **🍎 Apple iOS**: Полностью скомпилированный и синхронизированный проект Capacitor iOS для компиляции и установки через Xcode на iPhone и iPad.
 - **🍏 macOS**: Поддержка архитектур Apple Silicon (M1/M2/M3/M4) и Intel x64 (`.dmg` и `.zip`).
 
-### 5. 🎨 Версия 1.2.0 Pro в интерфейсе
+### 5. 🎨 Версия 1.1.0 Pro в интерфейсе
 - Обновлены все метаданные, бейджи в окне "О программе", заголовки и манифесты.
 - Оптимизированы цветовые темы: глубокая темная (Cyber / Midnight), чистая светлая и автоматическая адаптация под ОС.
 
@@ -38,12 +38,12 @@
 
 | Платформа | Файл / Формат | Назначение |
 | :--- | :--- | :--- |
-| 🪟 **Windows** | `NeyroNetbook 1.2.0.exe` | Автономный запуск Portable (x64) |
-| 🪟 **Windows** | `NeyroNetbook-1.2.0-win.zip` | Полный архив приложения в zip |
+| 🪟 **Windows** | `NeyroNetbook 1.1.0.exe` | Автономный запуск Portable (x64) |
+| 🪟 **Windows** | `NeyroNetbook-1.1.0-win.zip` | Полный архив приложения в zip |
 | 📱 **Android** | `NeyroNetbook.apk` | Подписанный релизный APK (Android 8.0 - 15+) |
-| 🐧 **Linux** | `NeyroNetbook-1.2.0.AppImage` | Универсальный запускной пакет Linux |
-| 🐧 **Linux** | `neyronetbook_1.2.0_amd64.deb` | Установочный пакет для Debian / Ubuntu |
-| 🍎 **iOS** | `packages/mobile/ios` | Нативный проект Xcode для iPhone/iPad |
+| 📱 **Android** | `NeyroNetbook-1.1.0.apk` | Подписанный релизный APK с номером версии |
+| 🐧 **Linux** | `NeyroNetbook-1.1.0-linux-x64.tar.gz` | Standalone архив x64 для Linux |
+| 🍎 **iOS** | `NeyroNetbook-iOS-v1.1.0.zip` | Нативный проект Xcode для iPhone/iPad |
 
 ---
 

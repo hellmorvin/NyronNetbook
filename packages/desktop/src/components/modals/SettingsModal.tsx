@@ -768,7 +768,7 @@ export const SettingsModal: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <h3 className="text-lg font-bold text-white tracking-tight">NeyroNetbook</h3>
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#7c5cff]/20 text-[#7c5cff] border border-[#7c5cff]/30">
-                        v1.2.0 Pro
+                        v1.1.0 Pro
                       </span>
                     </div>
                     <p className="text-xs text-[#94a3b8]">

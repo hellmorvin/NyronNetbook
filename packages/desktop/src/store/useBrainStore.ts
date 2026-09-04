@@ -2111,7 +2111,7 @@ export const useBrainStore = create<BrainState>()(
 
       exportVaultJSON: () => {
         const data = {
-          version: '1.2.0',
+          version: '1.1.0',
           vaultName: get().vaultName,
           exportedAt: new Date().toISOString(),
           merkleRoot: createMerkleRoot(

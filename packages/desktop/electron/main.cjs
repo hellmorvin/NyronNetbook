@@ -48,7 +48,7 @@ function saveVaultToFilesystem(vaultData) {
     const stateWithMeta = {
       ...vaultData,
       _savedAt: new Date().toISOString(),
-      _version: '1.2.0',
+      _version: '1.1.0',
       _vaultLocation: vaultDir,
     };
     fs.writeFileSync(vaultFile, JSON.stringify(stateWithMeta, null, 2), 'utf8');
@@ -230,7 +230,7 @@ function startSyncServer() {
           status: 'ok',
           app: 'NeironoNotebook',
           device: 'Desktop',
-          version: '1.2.0',
+          version: '1.1.0',
           ip: getLocalIpAddress(),
           time: Date.now(),
         })
