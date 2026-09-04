@@ -36,7 +36,9 @@ interface Window {
     loadVaultFromFilesystem?: () => Promise<{ success: boolean; data?: any; vaultDir?: string; restoredFromBackup?: boolean; error?: string }>;
     getVaultInfo?: () => Promise<{ vaultDir: string; exists: boolean; notesCount: number; backupCount: number; lastSaved: number | null }>;
     openVaultFolder?: () => Promise<string>;
-    getSyncServerStatus?: () => Promise<{ isRunning: boolean; port: number; ip: string; vaultDir: string }>;
+    getSyncServerStatus?: () => Promise<{ isRunning: boolean; port: number; ip: string; allIps?: string[]; interfaces?: Array<{ name: string; address: string; type: string; label: string; isVirtual: boolean }>; vaultDir: string; pairingKey?: string }>;
+    getAllNetworkInterfaces?: () => Promise<Array<{ name: string; address: string; type: string; label: string; isVirtual: boolean }>>;
+    setSyncPairingKey?: (key: string) => Promise<boolean>;
     onVaultSyncedFromRemote?: (callback: (data: any) => void) => () => void;
     isElectron?: boolean;
   };

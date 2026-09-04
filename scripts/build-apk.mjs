@@ -73,10 +73,12 @@ const generatedApk = path.resolve(
 );
 const releaseDir = path.resolve('release');
 fs.mkdirSync(releaseDir, { recursive: true });
-const targetApk = path.resolve(releaseDir, 'NeyroNetbook.apk');
+const targetApk = path.resolve(releaseDir, 'Nyron-1.1.0.apk');
 
 if (fs.existsSync(generatedApk)) {
   fs.copyFileSync(generatedApk, targetApk);
+  const oldApk = path.resolve(releaseDir, 'NeyroNetbook.apk');
+  if (fs.existsSync(oldApk)) fs.unlinkSync(oldApk);
   const sizeMb = (fs.statSync(targetApk).size / (1024 * 1024)).toFixed(2);
   console.log(`\n🎉 УСПЕШНО! Подписанный Release APK создан: ${targetApk} (${sizeMb} МБ)`);
 } else {

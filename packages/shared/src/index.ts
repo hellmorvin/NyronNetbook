@@ -6,3 +6,4 @@ export * from './search/hybrid-engine.js';
 export * from './ai/openai-client.js';
 export * from './ai/prompts.js';
 export * from './sync/p2pSyncEngine.js';
+export * from './qr/qr-service.js';

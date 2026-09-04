@@ -15,6 +15,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // Local Sync Server
   getSyncServerStatus: () => ipcRenderer.invoke('get-sync-server-status'),
+  getAllNetworkInterfaces: () => ipcRenderer.invoke('get-all-network-interfaces'),
+  setSyncPairingKey: (key) => ipcRenderer.invoke('set-sync-pairing-key', key),
   onVaultSyncedFromRemote: (callback) => {
     const handler = (_, data) => callback(data);
     ipcRenderer.on('vault-synced-from-remote', handler);

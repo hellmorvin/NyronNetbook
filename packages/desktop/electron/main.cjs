@@ -192,16 +192,80 @@ function getVaultInfo() {
 // ═══════════════════════════════════════════════════════════════════════════════
 let syncServer = null;
 const SYNC_PORT = 49200;
+let activePairingKey = '';
 
-function getLocalIpAddress() {
+function getAllNetworkInterfaces() {
   const interfaces = os.networkInterfaces();
+  const list = [];
+
   for (const name of Object.keys(interfaces)) {
     for (const net of interfaces[name] || []) {
       if (net.family === 'IPv4' && !net.internal) {
-        return net.address;
+        const lower = name.toLowerCase();
+        let type = 'other';
+        let isVirtual = false;
+        let label = name;
+
+        if (
+          lower.includes('vethernet') ||
+          lower.includes('virtualbox') ||
+          lower.includes('vmware') ||
+          lower.includes('wsl') ||
+          lower.includes('hyper-v') ||
+          lower.includes('tailscale') ||
+          lower.includes('zerotier') ||
+          lower.includes('docker')
+        ) {
+          type = 'virtual';
+          isVirtual = true;
+          label = `${name} (Виртуальный адаптер)`;
+        } else if (
+          lower.includes('wi-fi') ||
+          lower.includes('wifi') ||
+          lower.includes('беспровод') ||
+          lower.includes('wireless') ||
+          lower.includes('wlan')
+        ) {
+          type = 'wifi';
+          label = `${name} (Беспроводная сеть Wi-Fi)`;
+        } else if (
+          lower.includes('hotspot') ||
+          lower.includes('точка') ||
+          lower.includes('direct') ||
+          net.address.startsWith('192.168.137.')
+        ) {
+          type = 'hotspot';
+          label = `${name} (Точка доступа / Hotspot)`;
+        } else if (lower.includes('ethernet') || lower.includes('сеть') || lower.includes('eth')) {
+          type = 'ethernet';
+          label = `${name} (Проводная сеть Ethernet)`;
+        }
+
+        list.push({
+          name,
+          address: net.address,
+          type,
+          label,
+          isVirtual,
+        });
       }
     }
   }
+
+  // Priority sorting: Wi-Fi (1), Hotspot (2), Ethernet (3), Other (4), Virtual (5)
+  list.sort((a, b) => {
+    const priority = { wifi: 1, hotspot: 2, ethernet: 3, other: 4, virtual: 5 };
+    return (priority[a.type] || 4) - (priority[b.type] || 4);
+  });
+
+  return list;
+}
+
+function getLocalIpAddress() {
+  const list = getAllNetworkInterfaces();
+  const nonVirtual = list.find((i) => !i.isVirtual);
+  if (nonVirtual) return nonVirtual.address;
+  if (list.length > 0) return list[0].address;
   return '127.0.0.1';
 }
 
@@ -212,7 +276,7 @@ function startSyncServer() {
     // Enable CORS for mobile app & webviews
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Pairing-Key');
 
     if (req.method === 'OPTIONS') {
       res.writeHead(204);
@@ -221,17 +285,29 @@ function startSyncServer() {
     }
 
     const url = new URL(req.url, `http://localhost:${SYNC_PORT}`);
+    const clientKey = (req.headers['x-pairing-key'] || url.searchParams.get('key') || '')
+      .toString()
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '');
+    const cleanExpectedKey = activePairingKey.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
 
     // Ping endpoint
     if (url.pathname === '/api/sync/ping' && req.method === 'GET') {
+      const isKeyValid = cleanExpectedKey ? clientKey === cleanExpectedKey : true;
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(
         JSON.stringify({
           status: 'ok',
-          app: 'NeironoNotebook',
+          app: 'Nyron',
           device: 'Desktop',
           version: '1.1.0',
           ip: getLocalIpAddress(),
+          allIps: getAllNetworkInterfaces().map((i) => i.address),
+          interfaces: getAllNetworkInterfaces(),
+          hostname: os.hostname(),
+          isKeyValid,
+          hasKeyConfigured: !!cleanExpectedKey,
           time: Date.now(),
         })
       );
@@ -240,6 +316,11 @@ function startSyncServer() {
 
     // Get current vault endpoint
     if (url.pathname === '/api/sync/vault' && req.method === 'GET') {
+      if (cleanExpectedKey && clientKey && clientKey !== cleanExpectedKey) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: 'Неверный PIN-код сопряжения' }));
+        return;
+      }
       const result = loadVaultFromFilesystem();
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(result));
@@ -248,6 +329,11 @@ function startSyncServer() {
 
     // Sync / Post vault endpoint
     if (url.pathname === '/api/sync/vault' && req.method === 'POST') {
+      if (cleanExpectedKey && clientKey && clientKey !== cleanExpectedKey) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: 'Неверный PIN-код сопряжения' }));
+        return;
+      }
       let body = '';
       req.on('data', (chunk) => {
         body += chunk;
@@ -405,12 +491,24 @@ ipcMain.handle('open-vault-folder', () => {
   return vaultDir;
 });
 
+ipcMain.handle('get-all-network-interfaces', () => {
+  return getAllNetworkInterfaces();
+});
+
+ipcMain.handle('set-sync-pairing-key', (_, key) => {
+  activePairingKey = (key || '').toString();
+  return true;
+});
+
 ipcMain.handle('get-sync-server-status', () => {
   return {
     isRunning: syncServer !== null,
     port: SYNC_PORT,
     ip: getLocalIpAddress(),
+    allIps: getAllNetworkInterfaces().map((i) => i.address),
+    interfaces: getAllNetworkInterfaces(),
     vaultDir: getVaultDirPath(),
+    pairingKey: activePairingKey,
   };
 });
 
