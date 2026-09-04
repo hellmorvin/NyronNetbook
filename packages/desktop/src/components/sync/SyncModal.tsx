@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Wifi,
   Download,
@@ -25,7 +25,7 @@ import {
   Info
 } from 'lucide-react';
 import { useBrainStore } from '../../store/useBrainStore';
-import { generatePairingKey, encodeSyncQRPayload } from '@axon/shared';
+import { generatePairingKey, encodeSyncQRPayload, compressVaultForQR } from '@axon/shared';
 import { QRCodeView } from './QRCodeView';
 
 export const SyncModal: React.FC = () => {
@@ -41,7 +41,7 @@ export const SyncModal: React.FC = () => {
     getEternalVaultInfo,
   } = useBrainStore();
 
-  const [activeTab, setActiveTab] = useState<'qr' | 'manual' | 'vault'>('qr');
+  const [activeTab, setActiveTab] = useState<'qr' | 'offline_qr' | 'manual' | 'vault'>('qr');
   const [copiedKey, setCopiedKey] = useState(false);
   const [copiedIp, setCopiedIp] = useState(false);
   const [importStatus, setImportStatus] = useState<string | null>(null);
@@ -52,6 +52,18 @@ export const SyncModal: React.FC = () => {
     Array<{ name: string; address: string; type: string; label: string; isVirtual: boolean }>
   >([]);
   const [serverPort, setServerPort] = useState<number>(49200);
+
+  const [requirePin, setRequirePin] = useState<boolean>(() => {
+    return localStorage.getItem('nyron_require_pin') === 'true';
+  });
+  const [pinCode, setPinCode] = useState<string>(() => {
+    return localStorage.getItem('nyron_pin_code') || '1234';
+  });
+
+  const [offlineQrString, setOfflineQrString] = useState<string>('');
+  const [offlineQrSize, setOfflineQrSize] = useState<number>(0);
+  const [offlineQrTooLarge, setOfflineQrTooLarge] = useState<boolean>(false);
+  const [isGeneratingOfflineQr, setIsGeneratingOfflineQr] = useState<boolean>(false);
 
   const [vaultInfo, setVaultInfo] = useState<{
     vaultDir: string;
@@ -67,15 +79,13 @@ export const SyncModal: React.FC = () => {
   const [syncMessage, setSyncMessage] = useState<string>('');
 
   useEffect(() => {
-    let savedKey = localStorage.getItem('nyron_p2p_pairing_key');
-    if (!savedKey) {
-      savedKey = generatePairingKey();
-      localStorage.setItem('nyron_p2p_pairing_key', savedKey);
-    }
-    setPairingKey(savedKey);
+    const shouldRequire = localStorage.getItem('nyron_require_pin') === 'true';
+    const savedPin = localStorage.getItem('nyron_pin_code') || '1234';
+    const effectiveKey = shouldRequire ? savedPin : '';
+    setPairingKey(effectiveKey);
 
     if (typeof window !== 'undefined' && window.electronAPI) {
-      window.electronAPI.setSyncPairingKey?.(savedKey);
+      window.electronAPI.setSyncPairingKey?.(effectiveKey);
 
       window.electronAPI.getAllNetworkInterfaces?.().then((ifaces) => {
         if (Array.isArray(ifaces) && ifaces.length > 0) {
@@ -101,17 +111,59 @@ export const SyncModal: React.FC = () => {
     }
   }, [isSyncOpen, getEternalVaultInfo]);
 
+  useEffect(() => {
+    if (activeTab === 'offline_qr' && isSyncOpen) {
+      setIsGeneratingOfflineQr(true);
+      const state = useBrainStore.getState();
+      const payload = {
+        app: 'nyron-vault',
+        v: '1.1.0',
+        timestamp: Date.now(),
+        neurons: state.neurons,
+        shifts: state.shifts,
+        transactions: state.transactions,
+        canvasCards: state.canvasCards,
+        canvasConnections: state.canvasConnections,
+        savingsGoals: state.savingsGoals,
+        bankDeposits: state.bankDeposits,
+      };
+
+      compressVaultForQR(payload)
+        .then((qrStr) => {
+          setOfflineQrString(qrStr);
+          setOfflineQrSize(qrStr.length);
+          setOfflineQrTooLarge(qrStr.length > 2400);
+          setIsGeneratingOfflineQr(false);
+        })
+        .catch((err) => {
+          console.warn('Offline QR failed:', err);
+          setIsGeneratingOfflineQr(false);
+        });
+    }
+  }, [activeTab, isSyncOpen, neurons.length]);
+
   if (!isSyncOpen) return null;
 
-  const handleRegenerateKey = () => {
-    const newKey = generatePairingKey();
-    setPairingKey(newKey);
-    localStorage.setItem('nyron_p2p_pairing_key', newKey);
-    window.electronAPI?.setSyncPairingKey?.(newKey);
+  const handleToggleRequirePin = (checked: boolean) => {
+    setRequirePin(checked);
+    localStorage.setItem('nyron_require_pin', checked ? 'true' : 'false');
+    const effectiveKey = checked ? pinCode : '';
+    setPairingKey(effectiveKey);
+    window.electronAPI?.setSyncPairingKey?.(effectiveKey);
+  };
+
+  const handlePinChange = (newPin: string) => {
+    const cleaned = newPin.trim().toUpperCase().slice(0, 8);
+    setPinCode(cleaned);
+    localStorage.setItem('nyron_pin_code', cleaned);
+    if (requirePin) {
+      setPairingKey(cleaned);
+      window.electronAPI?.setSyncPairingKey?.(cleaned);
+    }
   };
 
   const copyPairingCode = () => {
-    navigator.clipboard?.writeText(pairingKey);
+    navigator.clipboard?.writeText(requirePin ? pinCode : 'БЕЗ ПАРОЛЯ');
     setCopiedKey(true);
     setTimeout(() => setCopiedKey(false), 2000);
   };
@@ -224,7 +276,7 @@ export const SyncModal: React.FC = () => {
   const qrString = encodeSyncQRPayload({
     app: 'nyron',
     v: '1.1.0',
-    key: pairingKey,
+    key: requirePin ? pinCode : '',
     port: serverPort,
     ips: candidateIps,
     created: Date.now(),
@@ -254,7 +306,7 @@ export const SyncModal: React.FC = () => {
                 </span>
               </div>
               <p className="text-[11px] text-[#94a3b8]">
-                Быстрое и надежное подключение с телефона через QR-код, Wi-Fi или Точку доступа
+                Быстрое подключение смартфона через QR-код, Wi-Fi или Точку доступа
               </p>
             </div>
           </div>
@@ -268,36 +320,48 @@ export const SyncModal: React.FC = () => {
         </div>
 
         {/* Tab Navigation */}
-        <div className="px-5 pt-3 border-b border-white/[0.06] flex items-center gap-2 bg-[#12131a]">
+        <div className="px-5 pt-3 border-b border-white/[0.06] flex items-center gap-2 bg-[#12131a] overflow-x-auto">
           <button
             onClick={() => setActiveTab('qr')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border whitespace-nowrap ${
               activeTab === 'qr'
                 ? 'bg-[#38bdf8]/15 border-[#38bdf8]/40 text-[#38bdf8]'
                 : 'bg-transparent border-transparent text-[#94a3b8] hover:text-white'
             }`}
           >
             <QrCode size={14} />
-            <span>QR-код сопряжения</span>
+            <span>QR по Wi-Fi</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('offline_qr')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border whitespace-nowrap ${
+              activeTab === 'offline_qr'
+                ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400'
+                : 'bg-transparent border-transparent text-[#94a3b8] hover:text-white'
+            }`}
+          >
+            <Zap size={14} />
+            <span>📷 Офлайн QR (Без сети)</span>
           </button>
 
           <button
             onClick={() => setActiveTab('manual')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border whitespace-nowrap ${
               activeTab === 'manual'
                 ? 'bg-[#7c5cff]/15 border-[#7c5cff]/40 text-[#a78bfa]'
                 : 'bg-transparent border-transparent text-[#94a3b8] hover:text-white'
             }`}
           >
             <Radio size={14} />
-            <span>Точка доступа & Wi-Fi IP</span>
+            <span>Сеть & Точка доступа</span>
           </button>
 
           <button
             onClick={() => setActiveTab('vault')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border whitespace-nowrap ${
               activeTab === 'vault'
-                ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400'
+                ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
                 : 'bg-transparent border-transparent text-[#94a3b8] hover:text-white'
             }`}
           >
@@ -308,7 +372,7 @@ export const SyncModal: React.FC = () => {
 
         {/* Modal Body */}
         <div className="p-5 space-y-4 max-h-[72vh] overflow-y-auto">
-          {/* ═════════════════ TAB 1: QR CODE HUB ═════════════════ */}
+          {/* ═════════════════ TAB 1: QR CODE HUB (WI-FI / HOTSPOT) ═════════════════ */}
           {activeTab === 'qr' && (
             <div className="space-y-4 animate-fade-in">
               <div className="p-5 rounded-2xl bg-gradient-to-br from-[#151726] to-[#12131d] border border-[#38bdf8]/30 flex flex-col md:flex-row items-center gap-6 shadow-xl">
@@ -330,52 +394,71 @@ export const SyncModal: React.FC = () => {
                     <p className="text-[11px] text-[#cbd5e1] leading-relaxed pt-1">
                       1. Откройте приложение <b>Nyron</b> на смартфоне.<br />
                       2. Перейдите в меню <b>«Синхронизация»</b>.<br />
-                      3. Нажмите <b>«Сканировать QR-код»</b> и наведите камеру на этот экран.
+                      3. Нажмите <b>«Сканировать QR-код с экрана ПК»</b>.
                     </p>
                   </div>
 
-                  {/* Pairing Credentials Pills */}
-                  <div className="space-y-2 pt-1">
-                    <div className="p-2.5 rounded-xl bg-black/40 border border-white/[0.08] flex items-center justify-between text-xs">
-                      <div>
-                        <span className="text-[9px] text-[#64748b] uppercase tracking-wider block font-mono">
-                          IP-адрес компьютера
+                  {/* PIN Mode Toggle Switch */}
+                  <div className="p-3 rounded-xl bg-black/40 border border-white/[0.08] space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full ${requirePin ? 'bg-amber-400' : 'bg-emerald-400 animate-pulse'}`} />
+                        <span className="text-xs font-bold text-white">
+                          {requirePin ? 'Защита PIN-кодом' : 'Свободное подключение (без пароля)'}
                         </span>
-                        <span className="font-mono font-black text-white">{localIp}:{serverPort}</span>
                       </div>
-                      <button
-                        onClick={copyServerAddress}
-                        className="px-2.5 py-1.5 rounded-lg bg-white/[0.08] hover:bg-white/[0.14] text-white text-[11px] font-medium flex items-center gap-1 transition-all"
-                      >
-                        {copiedIp ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                        <span>{copiedIp ? 'Скопировано' : 'Копировать'}</span>
-                      </button>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={requirePin}
+                          onChange={(e) => handleToggleRequirePin(e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-8 h-4.5 bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-[#38bdf8]"></div>
+                      </label>
                     </div>
 
-                    <div className="p-2.5 rounded-xl bg-black/40 border border-white/[0.08] flex items-center justify-between text-xs">
-                      <div>
-                        <span className="text-[9px] text-[#64748b] uppercase tracking-wider block font-mono">
-                          Секретный PIN сопряжения
-                        </span>
-                        <span className="font-mono font-bold text-[#f59e0b] tracking-wider">{pairingKey}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
+                    {requirePin ? (
+                      <div className="flex items-center gap-2 pt-1">
+                        <input
+                          type="text"
+                          value={pinCode}
+                          onChange={(e) => handlePinChange(e.target.value)}
+                          maxLength={8}
+                          placeholder="1234"
+                          className="w-28 px-2.5 py-1 rounded-lg bg-black/60 border border-amber-500/40 text-amber-300 font-mono font-bold text-xs tracking-widest focus:outline-none"
+                        />
                         <button
-                          onClick={handleRegenerateKey}
-                          className="p-1.5 rounded-lg text-[#64748b] hover:text-white transition-colors"
-                          title="Сгенерировать новый ключ"
+                          onClick={() => handlePinChange(Math.floor(1000 + Math.random() * 9000).toString())}
+                          className="p-1 rounded-lg text-[#64748b] hover:text-white"
+                          title="Случайный 4-значный PIN"
                         >
                           <RefreshCw size={12} />
                         </button>
-                        <button
-                          onClick={copyPairingCode}
-                          className="px-2.5 py-1.5 rounded-lg bg-white/[0.08] hover:bg-white/[0.14] text-white text-[11px] font-medium flex items-center gap-1 transition-all"
-                        >
-                          {copiedKey ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                          <span>{copiedKey ? 'Скопировано' : 'Копировать'}</span>
-                        </button>
+                        <span className="text-[10px] text-[#94a3b8]">Вшит в QR-код</span>
                       </div>
+                    ) : (
+                      <p className="text-[10px] text-emerald-400 leading-tight">
+                        Рекомендуется для домашнего Wi-Fi и точки доступа — без паролей и ошибок.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Server Address Pill */}
+                  <div className="p-2.5 rounded-xl bg-black/40 border border-white/[0.08] flex items-center justify-between text-xs">
+                    <div>
+                      <span className="text-[9px] text-[#64748b] uppercase tracking-wider block font-mono">
+                        IP-адрес компьютера
+                      </span>
+                      <span className="font-mono font-black text-white">{localIp}:{serverPort}</span>
                     </div>
+                    <button
+                      onClick={copyServerAddress}
+                      className="px-2.5 py-1.5 rounded-lg bg-white/[0.08] hover:bg-white/[0.14] text-white text-[11px] font-medium flex items-center gap-1 transition-all"
+                    >
+                      {copiedIp ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                      <span>{copiedIp ? 'Скопировано' : 'Копировать'}</span>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -384,7 +467,7 @@ export const SyncModal: React.FC = () => {
               {allInterfaces.length > 1 && (
                 <div className="p-3.5 rounded-2xl bg-[#141520] border border-white/[0.08] space-y-2">
                   <span className="text-[11px] font-bold text-[#94a3b8] block">
-                    Доступные сетевые адаптеры компьютера (выберите сеть, если подключены к другой):
+                    Сетевой адаптер компьютера (в QR включены все адреса):
                   </span>
                   <div className="flex flex-wrap gap-2">
                     {allInterfaces.map((iface) => (
@@ -405,6 +488,64 @@ export const SyncModal: React.FC = () => {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ═════════════════ TAB 2: OFFLINE DIRECT QR VAULT TRANSFER ═════════════════ */}
+          {activeTab === 'offline_qr' && (
+            <div className="space-y-4 animate-fade-in">
+              <div className="p-5 rounded-2xl bg-gradient-to-br from-[#121c24] to-[#11131c] border border-emerald-500/30 flex flex-col md:flex-row items-center gap-6 shadow-xl">
+                <div className="shrink-0 flex flex-col items-center gap-2">
+                  {isGeneratingOfflineQr ? (
+                    <div className="w-[210px] h-[210px] rounded-2xl bg-black/40 border border-white/10 flex flex-col items-center justify-center gap-2 text-white">
+                      <RefreshCw size={24} className="animate-spin text-emerald-400" />
+                      <span className="text-xs font-mono text-[#94a3b8]">Упаковка базы...</span>
+                    </div>
+                  ) : offlineQrString && !offlineQrTooLarge ? (
+                    <>
+                      <QRCodeView value={offlineQrString} size={210} border={3} />
+                      <span className="text-[10px] text-emerald-400 font-mono font-bold flex items-center gap-1.5">
+                        <Shield size={11} /> 100% Офлайн (без Wi-Fi)
+                      </span>
+                    </>
+                  ) : (
+                    <div className="w-[210px] h-[210px] rounded-2xl bg-black/40 border border-amber-500/30 p-4 flex flex-col items-center justify-center text-center gap-2">
+                      <AlertCircle size={28} className="text-amber-400" />
+                      <span className="text-xs font-bold text-white">Объем базы велик для 1 QR</span>
+                      <span className="text-[10px] text-[#94a3b8]">
+                        Используйте вкладку «QR по Wi-Fi» для синхронизации без ограничений по размеру
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex-1 space-y-3">
+                  <div>
+                    <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                      <Zap size={16} className="text-emerald-400" />
+                      <span>Прямой визуальный перенос данных</span>
+                    </h4>
+                    <p className="text-[11px] text-[#cbd5e1] leading-relaxed pt-1">
+                      Все ваши заметки, смены и финансы сжаты алгоритмом GZIP прямо в этот QR-код. Для переноса не требуется роутер, Wi-Fi или интернет!
+                    </p>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-black/40 border border-white/[0.08] space-y-1.5 text-xs">
+                    <div className="flex justify-between text-[#94a3b8]">
+                      <span>Заметок в базе:</span>
+                      <span className="text-white font-bold font-mono">{neurons.length}</span>
+                    </div>
+                    <div className="flex justify-between text-[#94a3b8]">
+                      <span>Сжатый объем данных:</span>
+                      <span className="text-emerald-400 font-mono font-bold">{offlineQrSize} байт</span>
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[11px] text-emerald-300">
+                    💡 <b>Инструкция:</b> Откройте Nyron на телефоне → «Синхронизация» → «Сканировать QR-код». Камера считает данные и мгновенно сохранит их на телефон!
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Wifi,
   Download,
@@ -25,8 +25,14 @@ import {
 } from 'lucide-react';
 import { useBrainStore } from '../../store/useBrainStore';
 import { p2pSyncService, SyncStatus } from '../../services/mobileP2PSyncService';
-import { decodeSyncQRPayload } from '@axon/shared';
+import {
+  decodeSyncQRPayload,
+  isVaultQRPayload,
+  decompressVaultFromQR,
+  compressVaultForQR,
+} from '@axon/shared';
 import { QRScannerModal } from './QRScannerModal';
+import { QRCodeView } from './QRCodeView';
 
 export const SyncModal: React.FC = () => {
   const {
@@ -48,10 +54,15 @@ export const SyncModal: React.FC = () => {
   const [importError, setImportError] = useState<string | null>(null);
   const [pairingKey, setPairingKey] = useState<string>(p2pSyncService.getPairingKey());
   const [remoteHost, setRemoteHost] = useState<string>(
-    localStorage.getItem('axon_remote_ip') || '192.168.148.152'
+    localStorage.getItem('axon_remote_ip') || '192.168.148.173'
   );
 
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [showMyQrModal, setShowMyQrModal] = useState(false);
+  const [myQrString, setMyQrString] = useState<string>('');
+  const [myQrSize, setMyQrSize] = useState<number>(0);
+  const [isGeneratingMyQr, setIsGeneratingMyQr] = useState<boolean>(false);
+
   const [syncState, setSyncState] = useState<SyncStatus>(p2pSyncService.getStatus());
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
   const [isTesting, setIsTesting] = useState(false);
@@ -64,7 +75,7 @@ export const SyncModal: React.FC = () => {
     const unsubscribe = p2pSyncService.subscribe((status) => {
       setSyncState(status);
       if (status.remoteIp) setRemoteHost(status.remoteIp);
-      if (status.pairingKey) setPairingKey(status.pairingKey);
+      if (status.pairingKey !== undefined) setPairingKey(status.pairingKey);
     });
     return () => unsubscribe();
   }, [isSyncOpen]);
@@ -116,6 +127,7 @@ export const SyncModal: React.FC = () => {
     setTestResult(null);
     const res = await p2pSyncService.autoDiscoverDesktop([
       remoteHost,
+      '192.168.148.173',
       '192.168.148.152',
       '192.168.137.1',
       '192.168.43.1',
@@ -131,7 +143,7 @@ export const SyncModal: React.FC = () => {
     } else {
       setTestResult({
         ok: false,
-        message: '🔴 Компьютер не найден автоматически. Отсканируйте QR-код на экране ПК или введите IP вручную.',
+        message: '🔴 Компьютер не найден автоматически. Отсканируйте QR-код на экране ПК или укажите IP вручную.',
       });
     }
     setTimeout(() => setTestResult(null), 5000);
@@ -160,18 +172,42 @@ export const SyncModal: React.FC = () => {
     );
   };
 
-  // Handle QR scan detection
+  // Handle QR scan detection (both LAN Wi-Fi sync and Offline direct Vault)
   const handleQRDetected = async (decodedText: string) => {
     setIsScannerOpen(false);
-    const payload = decodeSyncQRPayload(decodedText);
 
+    // 1. Direct Visual QR Vault (100% Offline, no Wi-Fi/network needed)
+    if (isVaultQRPayload(decodedText)) {
+      setImportStatus('⚡ Распаковка базы из QR-кода (Офлайн)...');
+      try {
+        const vault = await decompressVaultFromQR(decodedText);
+        if (vault && (Array.isArray(vault.neurons) || vault.app === 'nyron-vault')) {
+          loadVaultFullState(vault);
+          const count = vault.neurons?.length || 0;
+          setImportStatus(`🎉 База успешно перенесена по QR-коду! Загружено ${count} заметок (100% Офлайн).`);
+          setTimeout(() => setImportStatus(null), 5000);
+          return;
+        } else {
+          setImportError('Не удалось распознать структуру базы из QR-кода.');
+          setTimeout(() => setImportError(null), 4000);
+          return;
+        }
+      } catch (err: any) {
+        setImportError(`Ошибка импорта QR: ${err.message}`);
+        setTimeout(() => setImportError(null), 4000);
+        return;
+      }
+    }
+
+    // 2. Wi-Fi / Hotspot LAN Sync QR payload
+    const payload = decodeSyncQRPayload(decodedText);
     if (!payload) {
       setImportError('QR-код не содержит параметров синхронизации Nyron.');
       setTimeout(() => setImportError(null), 4000);
       return;
     }
 
-    if (payload.key) {
+    if (payload.key !== undefined) {
       handleKeyChange(payload.key);
     }
 
@@ -179,7 +215,7 @@ export const SyncModal: React.FC = () => {
       setRemoteHost(payload.ips[0]);
     }
 
-    setImportStatus('⚡ Подключение по QR-коду и синхронизация...');
+    setImportStatus('⚡ Подключение по QR-коду и быстрая синхронизация...');
 
     const res = await p2pSyncService.connectWithQRPayload(
       payload,
@@ -203,6 +239,32 @@ export const SyncModal: React.FC = () => {
     if (!res.success) {
       setImportError(res.error || 'Не удалось подключиться к ПК по QR-коду.');
       setTimeout(() => setImportError(null), 5000);
+    }
+  };
+
+  const handleOpenMyQr = async () => {
+    setIsGeneratingMyQr(true);
+    setShowMyQrModal(true);
+    try {
+      const payload = {
+        app: 'nyron-vault',
+        v: '1.1.0',
+        timestamp: Date.now(),
+        neurons,
+        transactions,
+        shifts,
+        canvasCards,
+        canvasConnections,
+        savingsGoals,
+        bankDeposits,
+      };
+      const qrStr = await compressVaultForQR(payload);
+      setMyQrString(qrStr);
+      setMyQrSize(qrStr.length);
+    } catch (e: any) {
+      console.warn('Failed to generate my QR:', e);
+    } finally {
+      setIsGeneratingMyQr(false);
     }
   };
 
@@ -326,11 +388,11 @@ export const SyncModal: React.FC = () => {
               {/* Quick Network Preset Buttons */}
               <div className="grid grid-cols-3 gap-1.5 pt-0.5">
                 <button
-                  onClick={() => setRemoteHost('192.168.148.152')}
+                  onClick={() => setRemoteHost('192.168.148.173')}
                   className="px-2 py-1.5 rounded-lg bg-black/40 border border-white/[0.08] hover:border-[#38bdf8]/40 text-[10px] text-[#cbd5e1] text-center truncate"
                   title="Текущая сеть Wi-Fi"
                 >
-                  📶 Wi-Fi 148.152
+                  📶 Wi-Fi 148.173
                 </button>
                 <button
                   onClick={() => setRemoteHost('192.168.43.1')}
@@ -358,7 +420,7 @@ export const SyncModal: React.FC = () => {
                     type="text"
                     value={remoteHost}
                     onChange={(e) => setRemoteHost(e.target.value)}
-                    placeholder="192.168.148.152 или 192.168.1.15"
+                    placeholder="192.168.148.173 или 192.168.1.15"
                     className="flex-1 px-3 py-2 rounded-xl bg-black/40 border border-white/[0.1] text-xs text-white font-mono placeholder:text-[#64748b] focus:outline-none focus:border-[#38bdf8]"
                   />
                   <button
@@ -374,14 +436,14 @@ export const SyncModal: React.FC = () => {
               {/* Pairing PIN Input */}
               <div className="space-y-1">
                 <label className="text-[10px] text-[#64748b] block uppercase tracking-wider font-mono">
-                  Секретный PIN сопряжения с экрана ПК
+                  PIN сопряжения (необязательно, если отключен на ПК)
                 </label>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={pairingKey}
                     onChange={(e) => handleKeyChange(e.target.value)}
-                    placeholder="NYRON-XXXX-YYYY"
+                    placeholder="Необязательно (или PIN с экрана ПК)"
                     className="flex-1 px-3 py-2 rounded-xl bg-black/40 border border-white/[0.1] text-xs text-[#f59e0b] font-mono font-bold tracking-wider placeholder:text-[#64748b] focus:outline-none focus:border-[#f59e0b]"
                   />
                   <button
@@ -435,7 +497,7 @@ export const SyncModal: React.FC = () => {
               )}
             </div>
 
-            {/* ═════════ 3. ETERNAL OFFLINE BACKUP ═════════ */}
+            {/* ═════════ 3. ETERNAL OFFLINE BACKUP & MY QR ═════════ */}
             <div className="p-4 rounded-2xl bg-[#141522] border border-white/[0.08] space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-white flex items-center gap-1.5">
@@ -445,23 +507,34 @@ export const SyncModal: React.FC = () => {
                 <span className="text-[10px] text-emerald-400 font-mono font-bold">100% Offline</span>
               </div>
 
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-3 gap-2">
                 <button
-                  onClick={handleExport}
-                  className="p-3 rounded-xl bg-black/40 border border-white/[0.08] hover:border-emerald-500/40 transition-all text-left flex items-center gap-2 active:scale-95 group"
+                  onClick={handleOpenMyQr}
+                  className="p-2.5 rounded-xl bg-black/40 border border-white/[0.08] hover:border-[#38bdf8]/40 transition-all text-left flex flex-col items-center text-center gap-1.5 active:scale-95 group"
                 >
-                  <FolderDown size={16} className="text-emerald-400 group-hover:scale-110 transition-transform" />
+                  <QrCode size={18} className="text-[#38bdf8] group-hover:scale-110 transition-transform" />
                   <div>
-                    <h5 className="text-xs font-bold text-white">Экспорт .json</h5>
-                    <p className="text-[9px] text-[#64748b]">Сохранить в Файлы</p>
+                    <h5 className="text-[11px] font-bold text-white leading-tight">Мой QR базы</h5>
+                    <p className="text-[8px] text-[#64748b]">Офлайн передача</p>
                   </div>
                 </button>
 
-                <label className="p-3 rounded-xl bg-black/40 border border-white/[0.08] hover:border-[#38bdf8]/40 transition-all text-left flex items-center gap-2 active:scale-95 group cursor-pointer">
-                  <Database size={16} className="text-[#38bdf8] group-hover:scale-110 transition-transform" />
+                <button
+                  onClick={handleExport}
+                  className="p-2.5 rounded-xl bg-black/40 border border-white/[0.08] hover:border-emerald-500/40 transition-all text-left flex flex-col items-center text-center gap-1.5 active:scale-95 group"
+                >
+                  <FolderDown size={18} className="text-emerald-400 group-hover:scale-110 transition-transform" />
                   <div>
-                    <h5 className="text-xs font-bold text-white">Импорт .json</h5>
-                    <p className="text-[9px] text-[#64748b]">Восстановить</p>
+                    <h5 className="text-[11px] font-bold text-white leading-tight">Экспорт .json</h5>
+                    <p className="text-[8px] text-[#64748b]">Сохранить файл</p>
+                  </div>
+                </button>
+
+                <label className="p-2.5 rounded-xl bg-black/40 border border-white/[0.08] hover:border-amber-500/40 transition-all text-left flex flex-col items-center text-center gap-1.5 active:scale-95 group cursor-pointer">
+                  <Database size={18} className="text-amber-400 group-hover:scale-110 transition-transform" />
+                  <div>
+                    <h5 className="text-[11px] font-bold text-white leading-tight">Импорт .json</h5>
+                    <p className="text-[8px] text-[#64748b]">Восстановить</p>
                   </div>
                   <input type="file" accept=".json" onChange={handleImport} className="hidden" />
                 </label>
@@ -490,6 +563,64 @@ export const SyncModal: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* My Vault QR Modal */}
+      {showMyQrModal && (
+        <div
+          className="fixed inset-0 z-[65] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 select-none animate-fade-in"
+          onClick={() => setShowMyQrModal(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-3xl border border-white/[0.12] bg-[#141520] p-5 flex flex-col items-center text-center space-y-4 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-2 text-white text-xs font-bold">
+                <QrCode size={16} className="text-[#38bdf8]" />
+                <span>Офлайн QR вашей базы</span>
+              </div>
+              <button
+                onClick={() => setShowMyQrModal(false)}
+                className="p-1 rounded-lg text-[#94a3b8] hover:text-white"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {isGeneratingMyQr ? (
+              <div className="w-[220px] h-[220px] flex items-center justify-center">
+                <RefreshCw size={28} className="animate-spin text-[#38bdf8]" />
+              </div>
+            ) : myQrString && myQrString.length <= 2400 ? (
+              <div className="flex flex-col items-center gap-2">
+                <QRCodeView value={myQrString} size={220} border={3} />
+                <span className="text-[10px] text-emerald-400 font-mono font-bold">
+                  ⚡ {neurons.length} заметок ({myQrSize} байт GZIP)
+                </span>
+              </div>
+            ) : (
+              <div className="w-[220px] h-[220px] flex flex-col items-center justify-center p-3 text-center border border-amber-500/30 rounded-2xl">
+                <AlertCircle size={32} className="text-amber-400 mb-2" />
+                <span className="text-xs font-bold text-white">База слишком велика для QR</span>
+                <span className="text-[10px] text-[#94a3b8] mt-1">
+                  Используйте экспорт .json или Wi-Fi синхронизацию
+                </span>
+              </div>
+            )}
+
+            <p className="text-[11px] text-[#94a3b8] leading-tight">
+              Другой смартфон или ПК может отсканировать этот QR-код для мгновенного переноса данных без интернета и роутера.
+            </p>
+
+            <button
+              onClick={() => setShowMyQrModal(false)}
+              className="w-full py-2.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] text-white text-xs font-bold"
+            >
+              Закрыть
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* QR Scanner Modal */}
       <QRScannerModal

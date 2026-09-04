@@ -316,9 +316,9 @@ function startSyncServer() {
 
     // Get current vault endpoint
     if (url.pathname === '/api/sync/vault' && req.method === 'GET') {
-      if (cleanExpectedKey && clientKey && clientKey !== cleanExpectedKey) {
+      if (cleanExpectedKey && clientKey !== cleanExpectedKey) {
         res.writeHead(401, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: false, error: 'Неверный PIN-код сопряжения' }));
+        res.end(JSON.stringify({ success: false, error: 'Требуется верный PIN-код сопряжения' }));
         return;
       }
       const result = loadVaultFromFilesystem();
@@ -329,9 +329,9 @@ function startSyncServer() {
 
     // Sync / Post vault endpoint
     if (url.pathname === '/api/sync/vault' && req.method === 'POST') {
-      if (cleanExpectedKey && clientKey && clientKey !== cleanExpectedKey) {
+      if (cleanExpectedKey && clientKey !== cleanExpectedKey) {
         res.writeHead(401, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: false, error: 'Неверный PIN-код сопряжения' }));
+        res.end(JSON.stringify({ success: false, error: 'Требуется верный PIN-код сопряжения' }));
         return;
       }
       let body = '';

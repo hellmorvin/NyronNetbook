@@ -11,6 +11,90 @@ export interface NyronQRSyncPayload {
   created: number;
 }
 
+export function isVaultQRPayload(rawText: string): boolean {
+  if (!rawText || typeof rawText !== 'string') return false;
+  const trimmed = rawText.trim();
+  return (
+    trimmed.startsWith('nyron://vault?') ||
+    trimmed.startsWith('nyron-vault:') ||
+    trimmed.startsWith('{"neurons"') ||
+    trimmed.startsWith('{"app":"nyron-vault"')
+  );
+}
+
+export async function compressVaultForQR(vaultData: any): Promise<string> {
+  try {
+    const jsonStr = typeof vaultData === 'string' ? vaultData : JSON.stringify(vaultData);
+    if (typeof CompressionStream !== 'undefined') {
+      const stream = new Response(
+        new Blob([jsonStr]).stream().pipeThrough(new CompressionStream('gzip'))
+      );
+      const buffer = await stream.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      let binary = '';
+      const len = bytes.byteLength;
+      for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      const base64 = btoa(binary);
+      return `nyron://vault?d=${base64}`;
+    } else {
+      // Fallback
+      const base64 = btoa(unescape(encodeURIComponent(jsonStr)));
+      return `nyron://vault?plain=${base64}`;
+    }
+  } catch (e: any) {
+    console.warn('compressVaultForQR failed:', e);
+    const jsonStr = typeof vaultData === 'string' ? vaultData : JSON.stringify(vaultData);
+    return `nyron://vault?plain=${btoa(unescape(encodeURIComponent(jsonStr)))}`;
+  }
+}
+
+export async function decompressVaultFromQR(qrString: string): Promise<any | null> {
+  try {
+    const trimmed = qrString.trim();
+    if (trimmed.startsWith('{')) {
+      return JSON.parse(trimmed);
+    }
+
+    let url: URL;
+    if (trimmed.startsWith('nyron://')) {
+      url = new URL(trimmed.replace('nyron://', 'http://localhost/'));
+    } else if (trimmed.includes('vault?')) {
+      url = new URL(trimmed.startsWith('http') ? trimmed : `http://localhost/${trimmed}`);
+    } else {
+      // Raw base64 string
+      url = new URL(`http://localhost/?d=${encodeURIComponent(trimmed)}`);
+    }
+
+    const plain = url.searchParams.get('plain');
+    if (plain) {
+      const json = decodeURIComponent(escape(atob(plain)));
+      return JSON.parse(json);
+    }
+
+    const base64 = url.searchParams.get('d') || url.searchParams.get('data');
+    if (base64) {
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      if (typeof DecompressionStream !== 'undefined') {
+        const stream = new Response(
+          new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))
+        );
+        const text = await stream.text();
+        return JSON.parse(text);
+      }
+    }
+    return null;
+  } catch (err) {
+    console.warn('decompressVaultFromQR error:', err);
+    return null;
+  }
+}
+
 export function encodeSyncQRPayload(payload: NyronQRSyncPayload): string {
   return JSON.stringify(payload);
 }
@@ -19,10 +103,13 @@ export function decodeSyncQRPayload(rawText: string): NyronQRSyncPayload | null 
   if (!rawText || typeof rawText !== 'string') return null;
   const trimmed = rawText.trim();
 
+  // If this is a direct vault payload, return null so caller handles vault
+  if (isVaultQRPayload(trimmed)) return null;
+
   // 1. Try standard JSON
   try {
     const obj = JSON.parse(trimmed);
-    if (obj && (obj.app === 'nyron' || obj.key || obj.ips || obj.port)) {
+    if (obj && (obj.app === 'nyron' || obj.key !== undefined || obj.ips || obj.port)) {
       return {
         app: 'nyron',
         v: obj.v || '1.1.0',
@@ -38,7 +125,7 @@ export function decodeSyncQRPayload(rawText: string): NyronQRSyncPayload | null 
   }
 
   // 2. Try URI format: nyron://sync?key=...&ips=192.168.1.15,192.168.137.1&port=49200
-  if (trimmed.startsWith('nyron://') || trimmed.includes('sync?')) {
+  if (trimmed.startsWith('nyron://sync') || trimmed.includes('sync?')) {
     try {
       const urlStr = trimmed.replace('nyron://', 'http://localhost/');
       const url = new URL(urlStr);
@@ -60,7 +147,7 @@ export function decodeSyncQRPayload(rawText: string): NyronQRSyncPayload | null 
   }
 
   // 3. Try plain IP address like "192.168.1.45:49200" or "192.168.1.45"
-  const ipMatch = trimmed.match(/^(d{1,3}.d{1,3}.d{1,3}.d{1,3})(?::(d{1,5}))?$/);
+  const ipMatch = trimmed.match(/^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(?::(\d{1,5}))?$/);
   if (ipMatch) {
     return {
       app: 'nyron',
