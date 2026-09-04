@@ -11,6 +11,8 @@ import { CalendarShiftView } from './components/views/CalendarShiftView';
 import { FinanceManagerView } from './components/views/FinanceManagerView';
 import { ObsidianNoteEditor } from './components/editor/ObsidianNoteEditor';
 import { DatabaseView } from './components/views/DatabaseView';
+import { MobileNotesListView } from './components/views/MobileNotesListView';
+import { MobileAnalyticsView } from './components/views/MobileAnalyticsView';
 import { SearchModal } from './components/search/SearchModal';
 import { NotebookLMHubModal } from './components/ai/NotebookLMHubModal';
 import { SyncModal } from './components/sync/SyncModal';
@@ -106,6 +108,20 @@ export const App: React.FC = () => {
           {visitedViews.has('database') && (
             <div className={`w-full h-full ${activeTab?.type === 'database' ? 'block' : 'hidden'}`}>
               <DatabaseView />
+            </div>
+          )}
+
+          {/* Persistent Notes Hub View */}
+          {visitedViews.has('notes') && (
+            <div className={`w-full h-full ${activeTab?.type === 'notes' ? 'block' : 'hidden'}`}>
+              <MobileNotesListView />
+            </div>
+          )}
+
+          {/* Persistent Analytics View */}
+          {visitedViews.has('analytics') && (
+            <div className={`w-full h-full ${activeTab?.type === 'analytics' ? 'block' : 'hidden'}`}>
+              <MobileAnalyticsView />
             </div>
           )}
 

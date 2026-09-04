@@ -22,6 +22,7 @@ import {
   HelpCircle,
   Lightbulb,
   Zap,
+  AlertTriangle,
 } from 'lucide-react';
 import { useBrainStore, CanvasCard, CanvasConnection } from '../../store/useBrainStore';
 
@@ -127,6 +128,13 @@ export const MobileCanvasView: React.FC = () => {
     deleteCanvasConnection,
     addNeuron,
     openNote,
+    openTab,
+    syncCanvasConnectionsToGraph,
+    syncCanvasToGraph,
+    loadGraphOntoCanvas,
+    clearCanvas,
+    clearCanvasConnections,
+    cleanupCanvasClutter,
   } = useBrainStore();
 
   const [viewMode, setViewMode] = useState<'board' | 'grid'>('board');
@@ -138,12 +146,54 @@ export const MobileCanvasView: React.FC = () => {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+  const [isConfirmClearCanvasOpen, setIsConfirmClearCanvasOpen] = useState(false);
+
+  // Clutter / Empty items detection for smart cleanup
+  const clutterInfo = useMemo(() => {
+    const connectedCardIds = new Set<string>();
+    canvasConnections.forEach((conn) => {
+      connectedCardIds.add(conn.fromNode);
+      connectedCardIds.add(conn.toNode);
+    });
+
+    const emptyOrOrphanCards = canvasCards.filter((card) => {
+      const hasContent =
+        (card.content && card.content.trim().length > 0) ||
+        (card.title &&
+          card.title.trim().length > 0 &&
+          card.title !== 'Мысль' &&
+          card.title !== 'Стикер');
+      const isConnected = connectedCardIds.has(card.id);
+      return !hasContent && !isConnected;
+    });
+
+    return {
+      emptyOrOrphans: emptyOrOrphanCards,
+      totalCards: canvasCards.length,
+      totalConnections: canvasConnections.length,
+    };
+  }, [canvasCards, canvasConnections]);
+
+  // Sync connections to graph state
+  const [syncedSuccessModal, setSyncedSuccessModal] = useState<{ count: number } | null>(null);
 
   // Card linking state
   const [linkingSourceCardId, setLinkingSourceCardId] = useState<string | null>(null);
 
+  // Selected Card on Canvas (Highlighted & quick actions)
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const selectedCardIdRef = useRef<string | null>(null);
+  selectedCardIdRef.current = selectedCardId;
+
   // Selected Study / Note Modal State
   const [selectedStudyCard, setSelectedStudyCard] = useState<CanvasCard | null>(null);
+
+  // Double-tap tracking refs
+  const lastCardTapRef = useRef<{ id: string; time: number }>({ id: '', time: 0 });
+  const lastCanvasTapRef = useRef<{ time: number; x: number; y: number }>({ time: 0, x: 0, y: 0 });
+
+  // Live Card Positions for rubberband real-time SVG arrow updates
+  const liveCardPositions = useRef<Map<string, { x: number; y: number; width: number; height: number }>>(new Map());
 
   const boardTransformRef = useRef({ x: 20, y: 20, scale: 1 });
   const [boardTransform, setBoardTransform] = useState({ x: 20, y: 20, scale: 1 });
@@ -159,6 +209,56 @@ export const MobileCanvasView: React.FC = () => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage((c) => (c === msg ? null : c)), 2500);
   }, []);
+
+  // Synchronize liveCardPositions map whenever canvasCards change
+  useEffect(() => {
+    canvasCards.forEach((c) => {
+      liveCardPositions.current.set(c.id, {
+        x: c.x,
+        y: c.y,
+        width: c.width || 220,
+        height: c.height || 140,
+      });
+    });
+  }, [canvasCards]);
+
+  // Real-time live rubberband updater for connected SVG arrows during card dragging
+  const updateConnectedSvgLinesRealtime = useCallback(
+    (cardId: string, newX: number, newY: number, cardW: number = 220, cardH: number = 140) => {
+      liveCardPositions.current.set(cardId, { x: newX, y: newY, width: cardW, height: cardH });
+
+      const currentConns = useBrainStore.getState().canvasConnections;
+      currentConns.forEach((conn) => {
+        if (conn.fromNode !== cardId && conn.toNode !== cardId) return;
+
+        const fromPos = liveCardPositions.current.get(conn.fromNode);
+        const toPos = liveCardPositions.current.get(conn.toNode);
+        if (!fromPos || !toPos) return;
+
+        const edge = getExactCardEdgeConnection(
+          { ...fromPos, id: conn.fromNode, type: 'sticky', content: '', color: '' },
+          { ...toPos, id: conn.toNode, type: 'sticky', content: '', color: '' }
+        );
+        const pathData = calculateSmoothBezier(edge);
+
+        const clickEl = document.getElementById(`mobile-conn-click-${conn.id}`);
+        const glowEl = document.getElementById(`mobile-conn-glow-${conn.id}`);
+        const lineEl = document.getElementById(`mobile-conn-line-${conn.id}`);
+        const labelEl = document.getElementById(`mobile-conn-label-${conn.id}`);
+
+        if (clickEl) clickEl.setAttribute('d', pathData);
+        if (glowEl) glowEl.setAttribute('d', pathData);
+        if (lineEl) lineEl.setAttribute('d', pathData);
+        if (labelEl) {
+          labelEl.setAttribute(
+            'transform',
+            `translate(${Math.round((edge.p1.x + edge.p2.x) / 2)}, ${Math.round((edge.p1.y + edge.p2.y) / 2)})`
+          );
+        }
+      });
+    },
+    []
+  );
 
   // Center a new card right in the current visible viewport center
   const handleAddCardAtCenter = useCallback(
@@ -232,6 +332,18 @@ export const MobileCanvasView: React.FC = () => {
     },
     [canvasCards, addCanvasConnection, showToast]
   );
+
+  // Sync canvas cards & connections to 2D/3D knowledge graph
+  const handleSyncConnectionsToGraph = useCallback(() => {
+    if (canvasCards.length === 0 && canvasConnections.length === 0) {
+      showToast('⚠️ На холсте пока пусто. Создайте карточки или стрелки');
+      return;
+    }
+    const res = syncCanvasToGraph();
+    const totalCount = res.createdCardsCount + res.createdConnectionsCount;
+    setSyncedSuccessModal({ count: totalCount });
+    showToast(`⚡ Перенесено в Граф: ${res.createdCardsCount} мыслей, ${res.createdConnectionsCount} связей`);
+  }, [canvasCards, canvasConnections, syncCanvasToGraph, showToast]);
 
   // Apply Educational Study Mindmap & Flowchart Templates
   const handleApplyTemplate = useCallback(
@@ -522,6 +634,9 @@ export const MobileCanvasView: React.FC = () => {
 
           // Direct DOM transform for 120 FPS buttery smooth movement without React re-rendering
           dragCardDomElem.style.transform = `translate3d(${newX}px, ${newY}px, 0)`;
+
+          // Real-time live rubberband update of connected SVG bezier arrows!
+          updateConnectedSvgLinesRealtime(draggingCardId, newX, newY);
           return;
         }
 
@@ -548,23 +663,67 @@ export const MobileCanvasView: React.FC = () => {
         if (hasMovedFar && lastDraggedPos) {
           // Finished dragging: save position to Zustand store
           updateCanvasCard(draggingCardId, { x: lastDraggedPos.x, y: lastDraggedPos.y });
+          setSelectedCardId(draggingCardId);
         } else {
           // User tapped on card without dragging:
           if (linkingSourceCardIdRef.current) {
             // In linking mode: connect source card to this tapped card!
             handleCompleteLink(draggingCardId);
           } else {
-            // Open card study reader/editor note modal
-            const tappedCard = useBrainStore.getState().canvasCards.find((c) => c.id === draggingCardId);
-            if (tappedCard) {
-              setSelectedStudyCard(tappedCard);
+            const now = Date.now();
+            const isDoubleTap =
+              lastCardTapRef.current.id === draggingCardId &&
+              now - lastCardTapRef.current.time < 350;
+
+            if (isDoubleTap) {
+              // Double tap: Open card study reader/editor note modal
+              const tappedCard = useBrainStore.getState().canvasCards.find((c) => c.id === draggingCardId);
+              if (tappedCard) {
+                setSelectedStudyCard(tappedCard);
+              }
+              lastCardTapRef.current = { id: '', time: 0 };
+            } else {
+              // Single tap: Selects the card (highlight & quick actions, NO modal popup!)
+              setSelectedCardId((cur) => (cur === draggingCardId ? cur : draggingCardId));
+              lastCardTapRef.current = { id: draggingCardId, time: now };
             }
           }
         }
-      }
+      } else if (isPanningBoard) {
+        if (hasMovedFar) {
+          setBoardTransform({ ...boardTransformRef.current });
+        } else {
+          // Tapped empty background
+          const now = Date.now();
+          const lastTap = lastCanvasTapRef.current;
+          const isDoubleTap =
+            now - lastTap.time < 350 &&
+            Math.hypot(touchStartX - lastTap.x, touchStartY - lastTap.y) < 30;
 
-      if (isPanningBoard && hasMovedFar) {
-        setBoardTransform({ ...boardTransformRef.current });
+          if (isDoubleTap) {
+            // Double tap on empty canvas creates a card right at that spot!
+            const currentTr = boardTransformRef.current;
+            const tapCanvasX = Math.round((-currentTr.x + touchStartX) / currentTr.scale);
+            const tapCanvasY = Math.round((-currentTr.y + touchStartY) / currentTr.scale);
+
+            addCanvasCard({
+              x: tapCanvasX - 110,
+              y: tapCanvasY - 70,
+              width: 220,
+              height: 140,
+              type: 'sticky',
+              title: 'Мысль',
+              content: '',
+              color: selectedColor,
+            });
+            showToast('✨ Создана карточка по двойному касанию');
+            lastCanvasTapRef.current = { time: 0, x: 0, y: 0 };
+          } else {
+            // Single tap on background deselects card
+            setSelectedCardId(null);
+            lastCanvasTapRef.current = { time: now, x: touchStartX, y: touchStartY };
+          }
+        }
       }
 
       isDraggingCard = false;
@@ -585,7 +744,7 @@ export const MobileCanvasView: React.FC = () => {
       board.removeEventListener('touchend', onTouchEnd);
       board.removeEventListener('touchcancel', onTouchEnd);
     };
-  }, [viewMode, updateCanvasCard, handleCompleteLink]);
+  }, [viewMode, updateCanvasCard, handleCompleteLink, selectedColor, addCanvasCard, showToast, updateConnectedSvgLinesRealtime]);
 
   // Convert Sticky to Real Markdown Note in the Notebook
   const handleConvertToNote = (card: CanvasCard) => {
@@ -672,6 +831,19 @@ export const MobileCanvasView: React.FC = () => {
 
         {/* Action Buttons */}
         <div className="flex items-center gap-1.5 shrink-0">
+          {/* Sync Connections to Knowledge Graph */}
+          <button
+            onClick={handleSyncConnectionsToGraph}
+            className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all shadow-sm"
+            title="Закинуть все связи карточек с холста в 2D/3D Граф знаний"
+          >
+            <Zap size={13} className="text-amber-400 fill-amber-400/30" />
+            <span className="hidden xs:inline">В Граф</span>
+            <span className="text-[10px] px-1 py-0.2 bg-amber-400/20 rounded-full font-mono font-bold">
+              {canvasConnections.length}
+            </span>
+          </button>
+
           {/* Templates */}
           <button
             onClick={() => setIsTemplateModalOpen(true)}
@@ -680,6 +852,19 @@ export const MobileCanvasView: React.FC = () => {
           >
             <Sparkles size={13} />
             <span className="hidden sm:inline">Схемы</span>
+          </button>
+
+          {/* Load Graph onto Canvas */}
+          <button
+            onClick={() => {
+              const res = loadGraphOntoCanvas();
+              showToast(`✨ Граф размещен на холсте: ${res.cardsCount} карточек, ${res.connectionsCount} стрелок`);
+            }}
+            className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-all"
+            title="Загрузить Граф и все существующие связи на этот Холст"
+          >
+            <Layers size={13} />
+            <span className="hidden sm:inline">Из Графа</span>
           </button>
 
           {/* View Mode Toggle */}
@@ -715,6 +900,22 @@ export const MobileCanvasView: React.FC = () => {
             title="Добавить карточку"
           >
             <Plus size={16} />
+          </button>
+
+          {/* Smart Cleanup / Clear Canvas */}
+          <button
+            onClick={() => setIsConfirmClearCanvasOpen(true)}
+            className="px-2.5 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-bold transition-all border border-rose-500/25 active:scale-95 flex items-center gap-1 text-xs relative shadow-sm"
+            title="Очистка холста и удаление мусора"
+          >
+            <Trash2 size={14} />
+            <span className="hidden xs:inline">Очистить</span>
+            {clutterInfo.emptyOrOrphans.length > 0 && (
+              <span
+                className="w-2 h-2 rounded-full bg-amber-400 absolute -top-0.5 -right-0.5 animate-pulse"
+                title={`Пустых карточек (мусор): ${clutterInfo.emptyOrOrphans.length}`}
+              />
+            )}
           </button>
         </div>
       </div>
@@ -897,6 +1098,7 @@ export const MobileCanvasView: React.FC = () => {
                     <g key={conn.id} className="pointer-events-auto cursor-pointer">
                       {/* Invisible wider hit path for touch deletion */}
                       <path
+                        id={`mobile-conn-click-${conn.id}`}
                         d={conn.pathData}
                         fill="none"
                         stroke="transparent"
@@ -909,6 +1111,7 @@ export const MobileCanvasView: React.FC = () => {
                       />
                       {/* Glow path */}
                       <path
+                        id={`mobile-conn-glow-${conn.id}`}
                         d={conn.pathData}
                         fill="none"
                         stroke={conn.color}
@@ -917,6 +1120,7 @@ export const MobileCanvasView: React.FC = () => {
                       />
                       {/* Visible curved line */}
                       <path
+                        id={`mobile-conn-line-${conn.id}`}
                         d={conn.pathData}
                         fill="none"
                         stroke={conn.color}
@@ -925,7 +1129,7 @@ export const MobileCanvasView: React.FC = () => {
                       />
                       {/* Semantic Label Badge */}
                       {conn.label && (
-                        <g transform={`translate(${conn.midX}, ${conn.midY})`}>
+                        <g id={`mobile-conn-label-${conn.id}`} transform={`translate(${conn.midX}, ${conn.midY})`}>
                           <rect
                             x={-40}
                             y={-12}
@@ -961,14 +1165,17 @@ export const MobileCanvasView: React.FC = () => {
                 const colorOpt =
                   COLOR_OPTIONS.find((c) => c.color === card.color) || COLOR_OPTIONS[0]!;
                 const isLinking = card.id === linkingSourceCardId;
+                const isSelected = card.id === selectedCardId;
 
                 return (
                   <div
                     key={card.id}
                     data-card-id={card.id}
-                    className={`absolute p-3 rounded-2xl border shadow-2xl backdrop-blur-xl flex flex-col justify-between pointer-events-auto transition-shadow select-none ${
+                    className={`absolute p-3 rounded-2xl border shadow-2xl backdrop-blur-xl flex flex-col justify-between pointer-events-auto transition-all select-none ${
                       isLinking
                         ? 'ring-4 ring-[#8b5cf6] shadow-purple-500/50 animate-pulse'
+                        : isSelected
+                        ? 'ring-2 ring-purple-400 shadow-purple-500/30'
                         : 'active:shadow-purple-500/20'
                     }`}
                     style={{
@@ -976,10 +1183,59 @@ export const MobileCanvasView: React.FC = () => {
                       width: `${card.width || 220}px`,
                       minHeight: '130px',
                       backgroundColor: colorOpt.bg,
-                      borderColor: isLinking ? '#8b5cf6' : colorOpt.border,
+                      borderColor: isLinking ? '#8b5cf6' : isSelected ? '#a855f7' : colorOpt.border,
                       touchAction: 'none',
                     }}
                   >
+                    {/* Floating Quick Action Pill for Selected Card */}
+                    {isSelected && (
+                      <div
+                        className="absolute -top-10 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 p-1 bg-[#141520]/95 backdrop-blur-xl border border-purple-500/40 rounded-xl shadow-2xl animate-fade-in"
+                        onClick={(e) => e.stopPropagation()}
+                        onTouchStart={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setSelectedStudyCard(card)}
+                          className="px-2 py-1 rounded-lg bg-purple-500/20 text-purple-300 text-[11px] font-bold flex items-center gap-1 active:scale-95 transition-all"
+                          title="Развернуть"
+                        >
+                          <BookOpen size={12} />
+                          <span>Открыть</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleStartLink(card.id)}
+                          className="px-2 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 text-[11px] font-bold flex items-center gap-1 active:scale-95 transition-all"
+                          title="Связать"
+                        >
+                          <Link2 size={12} />
+                          <span>Связать</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleConvertToNote(card)}
+                          className="px-2 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 text-[11px] font-bold flex items-center gap-1 active:scale-95 transition-all"
+                          title="В заметку"
+                        >
+                          <FileText size={12} />
+                          <span>В заметку</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            deleteCanvasCard(card.id);
+                            setSelectedCardId(null);
+                            showToast('Стикер удален');
+                          }}
+                          className="p-1 rounded-lg text-rose-400 hover:bg-rose-500/20 active:scale-95 transition-all"
+                          title="Удалить"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    )}
+
                     {/* Header: Title, Link & Delete Buttons */}
                     <div className="flex items-center justify-between pb-1.5 border-b border-white/[0.08] cursor-grab active:cursor-grabbing gap-1">
                       <div className="flex items-center gap-1.5 min-w-0 flex-1">
@@ -996,6 +1252,7 @@ export const MobileCanvasView: React.FC = () => {
                         {/* 🔗 Link Card button */}
                         <button
                           type="button"
+                          onTouchStart={(e) => e.stopPropagation()}
                           onClick={(e) => {
                             e.stopPropagation();
                             if (linkingSourceCardId === card.id) {
@@ -1004,7 +1261,7 @@ export const MobileCanvasView: React.FC = () => {
                               handleStartLink(card.id);
                             }
                           }}
-                          className={`p-1 rounded-lg active:scale-90 transition-all ${
+                          className={`p-1.5 rounded-lg active:scale-90 transition-all ${
                             isLinking
                               ? 'bg-purple-500 text-white shadow'
                               : 'text-[#94a3b8] hover:text-white hover:bg-white/[0.08]'
@@ -1017,11 +1274,12 @@ export const MobileCanvasView: React.FC = () => {
                         {/* Open Note Reader */}
                         <button
                           type="button"
+                          onTouchStart={(e) => e.stopPropagation()}
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedStudyCard(card);
                           }}
-                          className="p-1 rounded-lg text-[#94a3b8] hover:text-white hover:bg-white/[0.08] active:scale-90 transition-all"
+                          className="p-1.5 rounded-lg text-[#94a3b8] hover:text-white hover:bg-white/[0.08] active:scale-90 transition-all"
                           title="Развернуть карточку-заметку"
                         >
                           <BookOpen size={13} />
@@ -1030,12 +1288,13 @@ export const MobileCanvasView: React.FC = () => {
                         {/* Delete button */}
                         <button
                           type="button"
+                          onTouchStart={(e) => e.stopPropagation()}
                           onClick={(e) => {
                             e.stopPropagation();
                             deleteCanvasCard(card.id);
                             showToast('Стикер удален');
                           }}
-                          className="p-1 rounded-lg text-[#94a3b8] hover:text-[#f43f5e] active:scale-95 transition-all"
+                          className="p-1.5 rounded-lg text-[#94a3b8] hover:text-[#f43f5e] active:scale-95 transition-all"
                           title="Удалить"
                         >
                           <Trash2 size={13} />
@@ -1052,6 +1311,7 @@ export const MobileCanvasView: React.FC = () => {
                     <div className="pt-1.5 border-t border-white/[0.06] flex items-center justify-between">
                       <button
                         type="button"
+                        onTouchStart={(e) => e.stopPropagation()}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleConvertToNote(card);
@@ -1067,11 +1327,12 @@ export const MobileCanvasView: React.FC = () => {
                           <button
                             key={co.color}
                             type="button"
+                            onTouchStart={(e) => e.stopPropagation()}
                             onClick={(e) => {
                               e.stopPropagation();
                               updateCanvasCard(card.id, { color: co.color });
                             }}
-                            className={`w-2.5 h-2.5 rounded-full transition-transform ${
+                            className={`w-3 h-3 rounded-full transition-transform ${
                               card.color === co.color ? 'scale-125 ring-1 ring-white' : 'opacity-60'
                             }`}
                             style={{ backgroundColor: co.color }}
@@ -1495,6 +1756,212 @@ export const MobileCanvasView: React.FC = () => {
                 className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-[#8b5cf6] to-[#06b6d4] text-white text-xs font-bold shadow-lg shadow-cyan-500/20 active:scale-95 transition-all"
               >
                 Создать стикер
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ Modal: Synced to Graph Success ═══ */}
+      {syncedSuccessModal && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setSyncedSuccessModal(null)}
+        >
+          <div
+            className="w-full max-w-sm bg-[#14151e] border border-amber-500/40 rounded-3xl p-5 shadow-2xl space-y-4 text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center mx-auto">
+              <Zap size={24} className="fill-amber-400/40 animate-pulse" />
+            </div>
+
+            <div>
+              <h3 className="text-base font-bold text-white">Связи закинуты в Граф!</h3>
+              <p className="text-xs text-[#94a3b8] mt-1.5 leading-relaxed">
+                Перенесено связей: <strong className="text-amber-300 font-mono font-bold text-sm">{syncedSuccessModal.count}</strong>.
+                Карточки холста синхронизированы с базой знаний и теперь соединены нейронными синапсами в 2D и 3D визуализации.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 pt-2 border-t border-white/[0.08]">
+              <button
+                type="button"
+                onClick={() => setSyncedSuccessModal(null)}
+                className="flex-1 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-xs font-semibold text-[#cbd5e1]"
+              >
+                Остаться на холсте
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSyncedSuccessModal(null);
+                  openTab({ type: 'graph', title: 'Граф' });
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-black font-extrabold text-xs shadow-lg shadow-amber-500/25 active:scale-95 transition-all flex items-center justify-center gap-1.5"
+              >
+                <span>Открыть Граф</span>
+                <ArrowRight size={13} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Smart Canvas Cleanup Modal Sheet */}
+      {isConfirmClearCanvasOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in"
+          onClick={() => setIsConfirmClearCanvasOpen(false)}
+        >
+          <div
+            className="w-full max-w-md bg-[#151622] border border-white/[0.12] rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2.5 rounded-2xl bg-rose-500/15 text-rose-400 border border-rose-500/20">
+                  <Trash2 size={20} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
+                    <span>Очистка и порядок на холсте</span>
+                  </h3>
+                  <p className="text-[11px] text-[#94a3b8]">
+                    Удаление мусора, стрелок или полный сброс
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsConfirmClearCanvasOpen(false)}
+                className="p-1.5 rounded-xl text-[#94a3b8] hover:text-white hover:bg-white/[0.08] active:scale-95 transition-all"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Current Canvas Status Counters */}
+            <div className="grid grid-cols-3 gap-2 p-3 bg-white/[0.03] border border-white/[0.06] rounded-2xl text-center">
+              <div>
+                <span className="text-[10px] text-[#94a3b8] block">Карточек</span>
+                <span className="text-sm font-black text-white">{canvasCards.length}</span>
+              </div>
+              <div className="border-x border-white/[0.06]">
+                <span className="text-[10px] text-[#94a3b8] block">Стрелок</span>
+                <span className="text-sm font-black text-[#38bdf8] font-mono">{canvasConnections.length}</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-[#94a3b8] block">Пустых (мусор)</span>
+                <span
+                  className={`text-sm font-black ${
+                    clutterInfo.emptyOrOrphans.length > 0 ? 'text-amber-400' : 'text-[#94a3b8]'
+                  }`}
+                >
+                  {clutterInfo.emptyOrOrphans.length}
+                </span>
+              </div>
+            </div>
+
+            {/* Action 1: Remove Clutter (Empty stickers and unconnected blanks) */}
+            <div className="space-y-2">
+              {clutterInfo.emptyOrOrphans.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const count = clutterInfo.emptyOrOrphans.length;
+                    cleanupCanvasClutter();
+                    setSelectedCardId(null);
+                    setSelectedStudyCard(null);
+                    setIsConfirmClearCanvasOpen(false);
+                    showToast(`🧹 Удалено ${count} пустых карточек-мусора`);
+                  }}
+                  className="w-full p-3.5 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 text-left transition-all active:scale-[0.99] flex items-center justify-between group shadow-lg shadow-amber-500/5"
+                >
+                  <div className="space-y-0.5">
+                    <div className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                      <Sparkles size={14} className="shrink-0" />
+                      <span>Удалить пустые стикеры и мусор</span>
+                    </div>
+                    <p className="text-[11px] text-[#94a3b8] leading-tight">
+                      Уберёт незаполненные и одиночные карточки без заметок
+                    </p>
+                  </div>
+                  <span className="text-xs font-black px-2 py-1 rounded-xl bg-amber-500/25 text-amber-200 shrink-0 ml-2">
+                    -{clutterInfo.emptyOrOrphans.length}
+                  </span>
+                </button>
+              )}
+
+              {/* Action 2: Remove Only Connections (Keep cards intact) */}
+              {canvasConnections.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const count = canvasConnections.length;
+                    clearCanvasConnections();
+                    setIsConfirmClearCanvasOpen(false);
+                    showToast(`✂️ Удалено стрелок и связей: ${count}`);
+                  }}
+                  className="w-full p-3.5 rounded-2xl bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/25 text-left transition-all active:scale-[0.99] flex items-center justify-between group shadow-lg shadow-sky-500/5"
+                >
+                  <div className="space-y-0.5">
+                    <div className="text-xs font-bold text-sky-300 flex items-center gap-1.5">
+                      <Workflow size={14} className="shrink-0" />
+                      <span>Удалить только стрелки и связи</span>
+                    </div>
+                    <p className="text-[11px] text-[#94a3b8] leading-tight">
+                      Очистит соединительные линии, сохранив расположение карточек
+                    </p>
+                  </div>
+                  <span className="text-xs font-black px-2 py-1 rounded-xl bg-sky-500/25 text-sky-200 shrink-0 ml-2">
+                    -{canvasConnections.length}
+                  </span>
+                </button>
+              )}
+
+              {/* Action 3: Complete Wipe (Delete Everything) */}
+              <button
+                type="button"
+                disabled={canvasCards.length === 0 && canvasConnections.length === 0}
+                onClick={() => {
+                  clearCanvas();
+                  setSelectedCardId(null);
+                  setLinkingSourceCardId(null);
+                  setSelectedStudyCard(null);
+                  setIsConfirmClearCanvasOpen(false);
+                  showToast('💥 Холст полностью очищен');
+                }}
+                className={`w-full p-3.5 rounded-2xl border text-left transition-all active:scale-[0.99] flex items-center justify-between group ${
+                  canvasCards.length === 0 && canvasConnections.length === 0
+                    ? 'bg-white/[0.03] border-white/[0.05] text-[#64748b] cursor-not-allowed opacity-50'
+                    : 'bg-rose-500/10 hover:bg-rose-500/20 border-rose-500/30 text-rose-300 shadow-lg shadow-rose-500/10'
+                }`}
+              >
+                <div className="space-y-0.5">
+                  <div className="text-xs font-bold text-rose-400 flex items-center gap-1.5">
+                    <Trash2 size={14} className="shrink-0" />
+                    <span>Очистить весь холст полностью</span>
+                  </div>
+                  <p className="text-[11px] text-[#94a3b8] leading-tight">
+                    Удалит абсолютно все {canvasCards.length} карточек и {canvasConnections.length} стрелок
+                  </p>
+                </div>
+                <span className="text-xs font-black px-2 py-1 rounded-xl bg-rose-500/25 text-rose-200 shrink-0 ml-2">
+                  Сброс
+                </span>
+              </button>
+            </div>
+
+            {/* Close Button */}
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setIsConfirmClearCanvasOpen(false)}
+                className="w-full py-3 rounded-2xl bg-white/[0.06] hover:bg-white/[0.1] text-xs font-bold text-[#cbd5e1] active:scale-[0.99] transition-all"
+              >
+                Отмена
               </button>
             </div>
           </div>

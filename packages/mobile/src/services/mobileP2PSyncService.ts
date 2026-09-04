@@ -13,6 +13,15 @@ export interface SyncStatus {
   syncedCount: number;
 }
 
+export interface LocalVaultPayload {
+  neurons: Neuron[];
+  transactions?: any[];
+  shifts?: any[];
+  canvasCards?: any[];
+  canvasConnections?: any[];
+  savingsGoals?: any[];
+}
+
 export class MobileP2PSyncService {
   private socket: WebSocket | null = null;
   private statusListeners: Array<(status: SyncStatus) => void> = [];
@@ -45,10 +54,32 @@ export class MobileP2PSyncService {
     this.updateStatus({ remoteIp: ip });
   }
 
+  public async pingDesktop(customIp?: string): Promise<{ ok: boolean; info?: any; error?: string }> {
+    const rawIp = (customIp || this.status.remoteIp).trim();
+    if (!rawIp) return { ok: false, error: 'Укажите IP адрес' };
+    const host = rawIp.includes(':') ? rawIp : `${rawIp}:49200`;
+    const pingUrl = `http://${host}/api/sync/ping`;
+
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 3500);
+      const res = await fetch(pingUrl, { signal: ctrl.signal });
+      clearTimeout(timer);
+
+      if (res.ok) {
+        const json = await res.json();
+        return { ok: true, info: json };
+      }
+      return { ok: false, error: `Код ответа: ${res.status}` };
+    } catch (e: any) {
+      return { ok: false, error: e?.message || 'Компьютер недоступен' };
+    }
+  }
+
   public async syncWithDesktop(
-    getLocalNeurons: () => Neuron[],
-    setLocalNeurons: (neurons: Neuron[]) => void,
-    onSuccess?: () => void
+    getLocalPayload: () => LocalVaultPayload,
+    applyMergedVault: (vault: any) => void,
+    onSuccess?: (msg: string) => void
   ): Promise<void> {
     const ip = this.status.remoteIp.trim();
     if (!ip) {
@@ -57,133 +88,113 @@ export class MobileP2PSyncService {
     }
 
     const host = ip.includes(':') ? ip : `${ip}:49200`;
-    const wsUrl = `ws://${host}/axon-sync`;
+    const httpUrl = `http://${host}/api/sync/vault`;
 
     this.updateStatus({ state: 'connecting', errorMessage: undefined });
 
     try {
-      if (this.socket) {
-        this.socket.close();
-        this.socket = null;
+      // 1. Fast HTTP Synchronization
+      const localData = getLocalPayload();
+      this.updateStatus({ state: 'syncing' });
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      const response = await fetch(httpUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(localData),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`Сервер ПК вернул ошибку: ${response.status}`);
       }
 
-      const ws = new WebSocket(wsUrl);
-      this.socket = ws;
+      const result = await response.json();
+      if (!result.success || !result.vault) {
+        throw new Error(result.error || 'Ошибка формата ответа');
+      }
 
-      ws.onopen = () => {
-        this.updateStatus({ state: 'syncing' });
-        const localNeurons = getLocalNeurons();
-        const leaves = localNeurons.map((n) => ({
-          id: n.id,
-          filePath: n.filePath,
-          contentHash: computeHash(n.content || ''),
-          updatedAt: n.frontmatter.updated_at ? new Date(n.frontmatter.updated_at).getTime() : Date.now(),
-        }));
+      // Apply merged vault from desktop
+      applyMergedVault(result.vault);
 
-        const merkleRoot = createMerkleRoot(leaves);
+      const totalNotes = result.vault.neurons?.length || localData.neurons.length;
+      this.updateStatus({
+        state: 'connected',
+        lastSyncTime: Date.now(),
+        syncedCount: totalNotes,
+      });
 
-        // Send handshake with Merkle Root
-        ws.send(
-          JSON.stringify({
-            type: 'HANDSHAKE',
-            client: 'NyronNotebook-Mobile',
-            merkleRoot,
-            leaves,
-          })
-        );
-      };
+      const successMsg = `Синхронизировано: ${totalNotes} заметок`;
+      if (onSuccess) onSuccess(successMsg);
 
-      ws.onmessage = (event) => {
-        try {
-          const msg = JSON.parse(event.data);
+      setTimeout(() => {
+        this.updateStatus({ state: 'idle' });
+      }, 3500);
+    } catch (e: any) {
+      console.warn('HTTP sync failed, trying WebSocket fallback...', e);
 
-          if (msg.type === 'SYNC_REQUIRED') {
-            // Send full notes payload for delta resolution
-            const localNeurons = getLocalNeurons();
-            ws.send(
-              JSON.stringify({
-                type: 'NOTES_PAYLOAD',
-                neurons: localNeurons,
-              })
-            );
-          } else if (msg.type === 'SYNC_MERGED') {
-            // Apply merged notes
-            const remoteNeurons: Neuron[] = msg.neurons || [];
-            const localNeurons = getLocalNeurons();
-
-            // Merge local and remote
-            const mergedMap = new Map<string, Neuron>();
-            localNeurons.forEach((n) => mergedMap.set(n.id, n));
-
-            remoteNeurons.forEach((remote) => {
-              const local = mergedMap.get(remote.id);
-              if (!local) {
-                mergedMap.set(remote.id, remote);
-              } else {
-                const localUpdated = new Date(local.frontmatter.updated_at).getTime();
-                const remoteUpdated = new Date(remote.frontmatter.updated_at).getTime();
-
-                if (remoteUpdated > localUpdated) {
-                  // Run 3-way merge
-                  const mergeResult = threeWayMerge(local.content, local.content, remote.content);
-                  mergedMap.set(remote.id, {
-                    ...remote,
-                    content: mergeResult.merged,
-                    rawContent: mergeResult.merged,
-                  });
-                }
-              }
-            });
-
-            const mergedList = Array.from(mergedMap.values());
-            setLocalNeurons(mergedList);
-
-            this.updateStatus({
-              state: 'connected',
-              lastSyncTime: Date.now(),
-              syncedCount: mergedList.length,
-            });
-
-            if (onSuccess) onSuccess();
-
-            setTimeout(() => {
-              this.updateStatus({ state: 'idle' });
-            }, 3000);
-          } else if (msg.type === 'ALREADY_SYNCED') {
-            this.updateStatus({
-              state: 'connected',
-              lastSyncTime: Date.now(),
-              syncedCount: getLocalNeurons().length,
-            });
-
-            if (onSuccess) onSuccess();
-
-            setTimeout(() => {
-              this.updateStatus({ state: 'idle' });
-            }, 2500);
-          }
-        } catch (err: any) {
-          console.error('P2P message error:', err);
-          this.updateStatus({ state: 'error', errorMessage: err?.message || 'Ошибка обработки данных' });
+      // 2. WebSocket Fallback
+      const wsUrl = `ws://${host}/axon-sync`;
+      try {
+        if (this.socket) {
+          this.socket.close();
+          this.socket = null;
         }
-      };
 
-      ws.onerror = () => {
+        const ws = new WebSocket(wsUrl);
+        this.socket = ws;
+
+        ws.onopen = () => {
+          this.updateStatus({ state: 'syncing' });
+          const localData = getLocalPayload();
+          ws.send(
+            JSON.stringify({
+              type: 'NOTES_PAYLOAD',
+              neurons: localData.neurons,
+              transactions: localData.transactions,
+              shifts: localData.shifts,
+            })
+          );
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const msg = JSON.parse(event.data);
+            if (msg.type === 'SYNC_MERGED' && msg.neurons) {
+              applyMergedVault({ neurons: msg.neurons });
+              this.updateStatus({
+                state: 'connected',
+                lastSyncTime: Date.now(),
+                syncedCount: msg.neurons.length,
+              });
+              if (onSuccess) onSuccess(`Синхронизировано: ${msg.neurons.length} заметок`);
+              setTimeout(() => this.updateStatus({ state: 'idle' }), 3000);
+            }
+          } catch (err: any) {
+            this.updateStatus({ state: 'error', errorMessage: err?.message || 'Ошибка данных' });
+          }
+        };
+
+        ws.onerror = () => {
+          this.updateStatus({
+            state: 'error',
+            errorMessage: 'Не удалось подключиться к ПК. Проверьте IP и подключение к одной Wi-Fi сети.',
+          });
+        };
+      } catch (wsErr: any) {
         this.updateStatus({
           state: 'error',
-          errorMessage: 'Не удалось подключиться к ПК. Проверьте IP и сеть.',
+          errorMessage: 'Ошибка соединения. Убедитесь, что приложение на ПК открыто и находится в одной Wi-Fi сети.',
         });
-      };
-
-      ws.onclose = () => {
-        if (this.status.state === 'connecting' || this.status.state === 'syncing') {
-          this.updateStatus({ state: 'error', errorMessage: 'Соединение закрыто' });
-        }
-      };
-    } catch (e: any) {
-      this.updateStatus({ state: 'error', errorMessage: e?.message || 'Ошибка P2P соединения' });
+      }
     }
   }
 }
 
 export const p2pSyncService = new MobileP2PSyncService();
+

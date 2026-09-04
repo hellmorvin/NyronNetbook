@@ -13,6 +13,7 @@ import {
   Layers,
   Search,
   Sliders,
+  BarChart3,
 } from 'lucide-react';
 import { useBrainStore } from '../../store/useBrainStore';
 import { NeuralNotebookLogo } from '../brand/NeuralNotebookLogo';
@@ -53,6 +54,8 @@ export const TopTabBar: React.FC = () => {
         return <Calendar size={14} className="text-[#ec4899] shrink-0" />;
       case 'finance':
         return <Wallet size={14} className="text-[#10b981] shrink-0" />;
+      case 'analytics':
+        return <BarChart3 size={14} className="text-[#38bdf8] shrink-0" />;
       default:
         return <FileText size={14} className="text-[#38bdf8] shrink-0" />;
     }

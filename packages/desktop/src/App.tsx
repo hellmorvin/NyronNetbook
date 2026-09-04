@@ -8,6 +8,7 @@ import { ObsidianGraphView } from './components/graph/ObsidianGraphView';
 import { ObsidianCanvasView } from './components/views/ObsidianCanvasView';
 import { CalendarShiftView } from './components/views/CalendarShiftView';
 import { FinanceManagerView } from './components/views/FinanceManagerView';
+import { AnalyticsDashboardView } from './components/views/AnalyticsDashboardView';
 import { ObsidianNoteEditor } from './components/editor/ObsidianNoteEditor';
 import { DatabaseView } from './components/views/DatabaseView';
 import { WelcomeView } from './components/views/WelcomeView';
@@ -125,6 +126,8 @@ export const App: React.FC = () => {
                 <CalendarShiftView />
               ) : activeTab?.type === 'finance' ? (
                 <FinanceManagerView />
+              ) : activeTab?.type === 'analytics' ? (
+                <AnalyticsDashboardView />
               ) : activeTab?.type === 'database' ? (
                 <DatabaseView />
               ) : activeTab?.type === 'note' && activeTab?.noteId ? (

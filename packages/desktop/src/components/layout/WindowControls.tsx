@@ -1,17 +1,5 @@
 import React, { useState, useEffect } from 'react';
 
-declare global {
-  interface Window {
-    electronAPI?: {
-      minimize: () => void;
-      maximize: () => void;
-      close: () => void;
-      isMaximized: () => Promise<boolean>;
-      getLocalIp?: () => Promise<string>;
-      isElectron?: boolean;
-    };
-  }
-}
 
 export const WindowControls: React.FC = () => {
   const [isMaximized, setIsMaximized] = useState(false);

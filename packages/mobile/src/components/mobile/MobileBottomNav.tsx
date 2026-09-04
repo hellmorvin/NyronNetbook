@@ -20,20 +20,14 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ onOpenMoreMenu
   const activeType = activeTab?.type || 'graph';
 
   const handleOpenNotes = () => {
-    // If there is an active note, open it, otherwise open the first note or create one
-    if (activeNeuronId) {
+    if (activeType === 'notes' && activeNeuronId) {
       const n = neurons.find((item) => item.id === activeNeuronId);
       if (n) {
         openTab({ type: 'note', noteId: n.id, title: n.title });
         return;
       }
     }
-    if (neurons.length > 0) {
-      openTab({ type: 'note', noteId: neurons[0]!.id, title: neurons[0]!.title });
-    } else {
-      const newNote = useBrainStore.getState().addNeuron('Новая мысль');
-      openTab({ type: 'note', noteId: newNote.id, title: newNote.title });
-    }
+    openTab({ type: 'notes', title: 'Заметки' });
   };
 
   const navItems = [
@@ -41,7 +35,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ onOpenMoreMenu
       id: 'note',
       label: 'Заметки',
       icon: <FileText size={20} />,
-      isActive: activeType === 'note',
+      isActive: activeType === 'note' || activeType === 'notes',
       onClick: handleOpenNotes,
     },
     {

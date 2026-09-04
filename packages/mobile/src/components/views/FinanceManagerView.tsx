@@ -20,9 +20,16 @@ import {
   EyeOff,
   Percent,
   Sliders,
+  SlidersHorizontal,
+  RotateCcw,
+  Clock,
+  Minimize2,
+  Maximize2,
   BarChart3,
   PieChart,
   TrendingUp,
+  Calendar,
+  X,
 } from 'lucide-react';
 import {
   IconTargetGoal,
@@ -130,8 +137,78 @@ export const FinanceManagerView: React.FC = () => {
   const [isHeaderKpiVisible, setIsHeaderKpiVisible] = useState(true);
   const [isSidebarCategoriesVisible, setIsSidebarCategoriesVisible] = useState(true);
 
+  // Mobile hideable blocks (hero balance card, action buttons, shifts summary, empty categories)
+  const [isMobileHeroVisible, setIsMobileHeroVisible] = useState<boolean>(() => {
+    const s = localStorage.getItem('finance_hero_visible');
+    return s !== null ? s === 'true' : true;
+  });
+  const [isMobileActionsVisible, setIsMobileActionsVisible] = useState<boolean>(() => {
+    const s = localStorage.getItem('finance_actions_visible');
+    return s !== null ? s === 'true' : true;
+  });
+  const [isShiftsBlockVisible, setIsShiftsBlockVisible] = useState<boolean>(() => {
+    const s = localStorage.getItem('finance_shifts_visible');
+    return s !== null ? s === 'true' : true;
+  });
+  const [isHideEmptyCategories, setIsHideEmptyCategories] = useState<boolean>(() => {
+    const s = localStorage.getItem('finance_hide_empty_cats');
+    return s !== null ? s === 'true' : false;
+  });
+
   // Privacy eye toggle state (hide balances in public)
-  const [isPrivacyMode, setIsPrivacyMode] = useState(false);
+  const [isPrivacyMode, setIsPrivacyMode] = useState<boolean>(() => {
+    const s = localStorage.getItem('finance_privacy_mode');
+    return s !== null ? s === 'true' : false;
+  });
+
+  // Display Settings Sheet (Что скрыть/показать)
+  const [isDisplaySettingsOpen, setIsDisplaySettingsOpen] = useState(false);
+
+  // Mobile Analytics navigation & drilldown states
+  const [analyticsMobileSubTab, setAnalyticsMobileSubTab] = useState<'overview' | 'chart' | 'categories' | 'shifts'>('overview');
+  const [mobileChartMode, setMobileChartMode] = useState<'weeks' | 'days'>('weeks');
+  const [selectedMobileWeek, setSelectedMobileWeek] = useState<number | null>(null);
+  const [selectedAnalyticsCat, setSelectedAnalyticsCat] = useState<string | null>(null);
+
+  const toggleMobileHero = () => {
+    setIsMobileHeroVisible((prev) => {
+      const next = !prev;
+      localStorage.setItem('finance_hero_visible', String(next));
+      return next;
+    });
+  };
+
+  const toggleMobileActions = () => {
+    setIsMobileActionsVisible((prev) => {
+      const next = !prev;
+      localStorage.setItem('finance_actions_visible', String(next));
+      return next;
+    });
+  };
+
+  const toggleShiftsBlock = () => {
+    setIsShiftsBlockVisible((prev) => {
+      const next = !prev;
+      localStorage.setItem('finance_shifts_visible', String(next));
+      return next;
+    });
+  };
+
+  const toggleHideEmptyCategories = () => {
+    setIsHideEmptyCategories((prev) => {
+      const next = !prev;
+      localStorage.setItem('finance_hide_empty_cats', String(next));
+      return next;
+    });
+  };
+
+  const togglePrivacyMode = () => {
+    setIsPrivacyMode((prev) => {
+      const next = !prev;
+      localStorage.setItem('finance_privacy_mode', String(next));
+      return next;
+    });
+  };
 
   // Helper for privacy-aware formatting
   const formatMoney = (amount: number, sign: boolean = false) => {
@@ -508,11 +585,83 @@ export const FinanceManagerView: React.FC = () => {
         expense,
         net: income - expense,
         runningBalance,
+        txs: dayTxs,
       });
     }
 
     return data;
   }, [monthPrefix, monthTransactions, daysInMonth]);
+
+  const [selectedMobileDay, setSelectedMobileDay] = useState<number | null>(null);
+
+  // Weekly Chart Aggregation for comfortable mobile overview (no horizontal scroll needed)
+  const weeklyChartData = useMemo(() => {
+    const weeks = [
+      { id: 1, name: '1-я неделя', shortName: '1 нед.', range: '1–7', start: 1, end: 7, income: 0, expense: 0, net: 0, txs: [] as typeof monthTransactions },
+      { id: 2, name: '2-я неделя', shortName: '2 нед.', range: '8–14', start: 8, end: 14, income: 0, expense: 0, net: 0, txs: [] as typeof monthTransactions },
+      { id: 3, name: '3-я неделя', shortName: '3 нед.', range: '15–21', start: 15, end: 21, income: 0, expense: 0, net: 0, txs: [] as typeof monthTransactions },
+      { id: 4, name: '4+ неделя', shortName: '4+ нед.', range: `22–${daysInMonth}`, start: 22, end: daysInMonth, income: 0, expense: 0, net: 0, txs: [] as typeof monthTransactions },
+    ];
+
+    monthTransactions.forEach((tx) => {
+      const parts = (tx.date || '').split('-');
+      const day = parseInt(parts[2] || '1', 10);
+      let weekIdx = 3;
+      if (day <= 7) weekIdx = 0;
+      else if (day <= 14) weekIdx = 1;
+      else if (day <= 21) weekIdx = 2;
+
+      weeks[weekIdx].txs.push(tx);
+      if (tx.type === 'income') {
+        weeks[weekIdx].income += tx.amount;
+      } else {
+        weeks[weekIdx].expense += tx.amount;
+      }
+      weeks[weekIdx].net = weeks[weekIdx].income - weeks[weekIdx].expense;
+    });
+
+    const maxWeeklyAmount = Math.max(
+      1000,
+      ...weeks.map((w) => Math.max(w.income, w.expense))
+    );
+
+    return { weeks, maxWeeklyAmount };
+  }, [monthTransactions, daysInMonth]);
+
+  const handleExportReportToNote = () => {
+    const reportTitle = `Финансовый отчет — ${MONTH_NAMES[month]} ${year}`;
+    let md = `# 📊 Финансовый отчет: ${MONTH_NAMES[month]} ${year}\n\n`;
+    md += `*Сформировано автоматически в НейроноБлокноте: ${new Date().toLocaleDateString('ru-RU')}*\n\n`;
+    md += `## 🎯 Основные показатели\n\n`;
+    md += `| Показатель | Значение |\n`;
+    md += `|---|---:|\n`;
+    md += `| 💰 Доходы за месяц | **+${stats.totalIncome.toLocaleString('ru-RU')} ₽** |\n`;
+    md += `| 💸 Расходы за месяц | **-${stats.totalExpense.toLocaleString('ru-RU')} ₽** |\n`;
+    md += `| ⚖️ Чистое сальдо | **${stats.netSavings >= 0 ? '+' : ''}${stats.netSavings.toLocaleString('ru-RU')} ₽** |\n`;
+    md += `| 📈 Норма сбережений | **${stats.savingsRate}%** |\n`;
+    md += `| 🏷️ Дневной расход (ср.) | **${Math.round(stats.totalExpense / daysInMonth).toLocaleString('ru-RU')} ₽ / сутки** |\n`;
+    md += `| 🏦 Вклады и счета | **${stats.totalDepositsBalance.toLocaleString('ru-RU')} ₽** (+${stats.totalMonthlyYield.toLocaleString('ru-RU')} ₽/мес) |\n\n`;
+
+    md += `## 🍕 Расходы по категориям\n\n`;
+    md += `| Категория | Доля | Сумма |\n`;
+    md += `|---|:---:|---:|\n`;
+    categoryBreakdown.forEach((c) => {
+      md += `| ${c.category} | ${c.percent}% | ${c.amount.toLocaleString('ru-RU')} ₽ |\n`;
+    });
+    md += `\n`;
+
+    if (savingsGoals.length > 0) {
+      md += `## 🎯 Статус целей накоплений\n\n`;
+      savingsGoals.forEach((g) => {
+        const pct = g.targetAmount > 0 ? Math.round((g.currentAmount / g.targetAmount) * 100) : 0;
+        md += `- **${g.title}**: ${g.currentAmount.toLocaleString('ru-RU')} ₽ / ${g.targetAmount.toLocaleString('ru-RU')} ₽ (${pct}%)\n`;
+      });
+      md += `\n`;
+    }
+
+    const newNote = addNeuron(reportTitle, md, 'Финансы');
+    openNote(newNote.id);
+  };
 
   const maxDailyAmount = useMemo(() => {
     let max = 1000;
@@ -525,14 +674,18 @@ export const FinanceManagerView: React.FC = () => {
   }, [dailyChartData]);
 
   const categoryBreakdown = useMemo(() => {
-    const list = Object.entries(stats.categoryTotals).map(([cat, amount]) => ({
+    let list = Object.entries(stats.categoryTotals).map(([cat, amount]) => ({
       category: cat,
       amount,
       color: CATEGORY_COLORS[cat] || '#94a3b8',
       percent: stats.totalExpense > 0 ? Math.round((amount / stats.totalExpense) * 100) : 0,
+      txs: monthTransactions.filter((t) => t.category === cat && t.type === 'expense'),
     }));
+    if (isHideEmptyCategories) {
+      list = list.filter((c) => c.amount > 0);
+    }
     return list.sort((a, b) => b.amount - a.amount);
-  }, [stats.categoryTotals, stats.totalExpense]);
+  }, [stats.categoryTotals, stats.totalExpense, monthTransactions, isHideEmptyCategories]);
 
   // Prepared Transactions for Table Display (Supports single aggregated shift entry)
   const tableTransactions = useMemo(() => {
@@ -785,8 +938,32 @@ export const FinanceManagerView: React.FC = () => {
             </div>
           </div>
 
-          {/* Actions */}
+          {/* Actions: Quick Hide Toggle, Display Settings Menu & Export Note */}
           <div className="flex items-center gap-1.5 flex-wrap">
+            {/* Quick 1-Tap Toggle: Скрыть / Показать верхний блок (баланс) */}
+            <button
+              onClick={toggleMobileHero}
+              className={`p-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1 transition-all active:scale-95 ${
+                !isMobileHeroVisible
+                  ? 'bg-[#7c5cff]/20 text-[#a78bfa] border-[#7c5cff]/50 shadow-sm'
+                  : 'bg-[#161720] border-white/[0.08] text-[#94a3b8] hover:text-white'
+              }`}
+              title={isMobileHeroVisible ? 'Скрыть блок баланса для экономии места на экране' : 'Развернуть блок баланса'}
+            >
+              {isMobileHeroVisible ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              <span className="text-[10px] hidden xs:inline">{isMobileHeroVisible ? 'Скрыть' : 'Показать'}</span>
+            </button>
+
+            {/* Display & Hide Settings: "Что скрыть / показать" */}
+            <button
+              onClick={() => setIsDisplaySettingsOpen(true)}
+              className="p-1.5 rounded-xl bg-[#161720] border border-white/[0.08] text-[#94a3b8] hover:text-white transition-colors active:scale-95 flex items-center gap-1"
+              title="Настройка отображения (выбрать, какие блоки скрыть или показать)"
+            >
+              <SlidersHorizontal size={14} />
+              <span className="text-[10px] hidden sm:inline">Вид</span>
+            </button>
+
             {/* Export Note */}
             <button
               onClick={handleExportFinanceReport}
@@ -794,15 +971,6 @@ export const FinanceManagerView: React.FC = () => {
               title="Экспорт отчета в заметку"
             >
               <FileText size={14} />
-            </button>
-
-            {/* Privacy Eye Toggle */}
-            <button
-              onClick={() => setIsPrivacyMode((v) => !v)}
-              className="p-1.5 rounded-xl bg-[#161720] border border-white/[0.08] text-[#94a3b8] hover:text-white transition-colors active:scale-95"
-              title={isPrivacyMode ? 'Показать баланс' : 'Скрыть баланс (Режим приватности)'}
-            >
-              {isPrivacyMode ? <EyeOff size={14} className="text-[#f59e0b]" /> : <Eye size={14} />}
             </button>
           </div>
         </div>
@@ -860,96 +1028,130 @@ export const FinanceManagerView: React.FC = () => {
           </button>
         </div>
 
-        {/* Mobile-First Hero Balance Card & 4 Big Quick Actions (Tinkoff / Revolut style) */}
+        {/* Mobile-First Hero Balance Card & 4 Big Quick Actions (Collapsible for maximum screen space) */}
         <div className="flex md:hidden flex-col gap-2.5">
-          {/* Hero Balance Card */}
-          <div className="p-4 bg-gradient-to-br from-[#1a1b29] via-[#141522] to-[#10111a] border border-white/[0.10] rounded-2xl shadow-xl space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] uppercase font-bold text-[#94a3b8] tracking-wider">
-                Чистый остаток (Баланс)
-              </span>
-              <span className="px-2 py-0.5 rounded-full bg-[#10b981]/15 text-[#10b981] border border-[#10b981]/30 text-[10px] font-bold flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
-                {stats.savingsRate}% сохранено
-              </span>
-            </div>
+          {/* Hero Balance Card: Full Card or Sleek Compact Strip */}
+          {isMobileHeroVisible ? (
+            <div className="p-4 bg-gradient-to-br from-[#1a1b29] via-[#141522] to-[#10111a] border border-white/[0.10] rounded-2xl shadow-xl space-y-3 relative transition-all">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] uppercase font-bold text-[#94a3b8] tracking-wider">
+                  Чистый остаток (Баланс)
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="px-2 py-0.5 rounded-full bg-[#10b981]/15 text-[#10b981] border border-[#10b981]/30 text-[10px] font-bold flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
+                    {stats.savingsRate}% сохранено
+                  </span>
+                  <button
+                    onClick={toggleMobileHero}
+                    className="p-1 rounded-lg text-[#94a3b8] hover:text-white hover:bg-white/[0.08] transition-colors"
+                    title="Скрыть блок баланса"
+                  >
+                    <ChevronUp size={14} />
+                  </button>
+                </div>
+              </div>
 
-            <div className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-white">
-              {formatMoney(stats.netSavings, true)}
-            </div>
+              <div className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-white">
+                {formatMoney(stats.netSavings, true)}
+              </div>
 
-            <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/[0.06] text-center">
-              <div className="p-2 rounded-xl bg-black/30 border border-white/[0.04]">
-                <span className="text-[9px] text-[#94a3b8] block uppercase font-semibold">Доходы</span>
-                <span className="text-xs font-black text-[#10b981] font-mono block truncate mt-0.5">
-                  {formatMoney(stats.totalIncome, true)}
+              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/[0.06] text-center">
+                <div className="p-2 rounded-xl bg-black/30 border border-white/[0.04]">
+                  <span className="text-[9px] text-[#94a3b8] block uppercase font-semibold">Доходы</span>
+                  <span className="text-xs font-black text-[#10b981] font-mono block truncate mt-0.5">
+                    {formatMoney(stats.totalIncome, true)}
+                  </span>
+                </div>
+                <div className="p-2 rounded-xl bg-black/30 border border-white/[0.04]">
+                  <span className="text-[9px] text-[#94a3b8] block uppercase font-semibold">Расходы</span>
+                  <span className="text-xs font-black text-[#f43f5e] font-mono block truncate mt-0.5">
+                    {formatMoney(-stats.totalExpense)}
+                  </span>
+                </div>
+                <div className="p-2 rounded-xl bg-black/30 border border-white/[0.04]">
+                  <span className="text-[9px] text-[#94a3b8] block uppercase font-semibold">Со смен</span>
+                  <span className="text-xs font-black text-[#38bdf8] font-mono block truncate mt-0.5">
+                    {formatMoney(shiftStats.totalEarnings, true)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* Sleek Collapsed Compact Strip when hidden */
+            <div
+              onClick={toggleMobileHero}
+              className="flex items-center justify-between px-3.5 py-2.5 bg-gradient-to-r from-[#181926] to-[#12131d] border border-white/[0.08] rounded-xl cursor-pointer hover:border-[#7c5cff]/40 transition-all shadow-sm group"
+              title="Нажмите, чтобы развернуть карточку баланса"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-[#94a3b8] uppercase font-bold">Баланс:</span>
+                <span className={`text-sm font-black font-mono ${stats.netSavings >= 0 ? 'text-[#10b981]' : 'text-[#f43f5e]'}`}>
+                  {formatMoney(stats.netSavings, true)}
+                </span>
+                <span className="text-[10px] text-[#94a3b8] font-mono">
+                  ({stats.savingsRate}% сохр.)
                 </span>
               </div>
-              <div className="p-2 rounded-xl bg-black/30 border border-white/[0.04]">
-                <span className="text-[9px] text-[#94a3b8] block uppercase font-semibold">Расходы</span>
-                <span className="text-xs font-black text-[#f43f5e] font-mono block truncate mt-0.5">
-                  {formatMoney(-stats.totalExpense)}
-                </span>
-              </div>
-              <div className="p-2 rounded-xl bg-black/30 border border-white/[0.04]">
-                <span className="text-[9px] text-[#94a3b8] block uppercase font-semibold">Со смен</span>
-                <span className="text-xs font-black text-[#38bdf8] font-mono block truncate mt-0.5">
-                  {formatMoney(shiftStats.totalEarnings, true)}
-                </span>
+              <div className="flex items-center gap-1 text-[11px] text-[#7c5cff] font-bold group-hover:underline">
+                <span>Развернуть</span>
+                <ChevronDown size={14} />
               </div>
             </div>
-          </div>
+          )}
 
-          {/* 4 Big 1-Tap Quick Action Buttons */}
-          <div className="grid grid-cols-4 gap-2">
-            <button
-              onClick={() => {
-                setModalTxType('income');
-                setModalTxCategory('Зарплата');
-                setIsAddTxModalOpen(true);
-              }}
-              className="flex flex-col items-center justify-center p-2 rounded-2xl bg-[#10b981]/15 border border-[#10b981]/25 hover:bg-[#10b981]/25 transition-all active:scale-95 text-center shadow-sm"
-            >
-              <div className="w-8 h-8 rounded-full bg-[#10b981]/25 text-[#10b981] flex items-center justify-center mb-1">
-                <ArrowUpRight size={16} strokeWidth={2.5} />
-              </div>
-              <span className="text-[11px] font-bold text-white leading-tight">+ Доход</span>
-            </button>
+          {/* 4 Big 1-Tap Quick Action Buttons (Can also be hidden for compact view) */}
+          {isMobileActionsVisible && (
+            <div className="grid grid-cols-4 gap-2">
+              <button
+                onClick={() => {
+                  setModalTxType('income');
+                  setModalTxCategory('Зарплата');
+                  setIsAddTxModalOpen(true);
+                }}
+                className="flex flex-col items-center justify-center p-2 rounded-2xl bg-[#10b981]/15 border border-[#10b981]/25 hover:bg-[#10b981]/25 transition-all active:scale-95 text-center shadow-sm"
+              >
+                <div className="w-8 h-8 rounded-full bg-[#10b981]/25 text-[#10b981] flex items-center justify-center mb-1">
+                  <ArrowUpRight size={16} strokeWidth={2.5} />
+                </div>
+                <span className="text-[11px] font-bold text-white leading-tight">+ Доход</span>
+              </button>
 
-            <button
-              onClick={() => {
-                setModalTxType('expense');
-                setModalTxCategory('Еда/Продукты');
-                setIsAddTxModalOpen(true);
-              }}
-              className="flex flex-col items-center justify-center p-2 rounded-2xl bg-[#f43f5e]/15 border border-[#f43f5e]/25 hover:bg-[#f43f5e]/25 transition-all active:scale-95 text-center shadow-sm"
-            >
-              <div className="w-8 h-8 rounded-full bg-[#f43f5e]/25 text-[#f43f5e] flex items-center justify-center mb-1">
-                <ArrowDownRight size={16} strokeWidth={2.5} />
-              </div>
-              <span className="text-[11px] font-bold text-white leading-tight">- Расход</span>
-            </button>
+              <button
+                onClick={() => {
+                  setModalTxType('expense');
+                  setModalTxCategory('Еда/Продукты');
+                  setIsAddTxModalOpen(true);
+                }}
+                className="flex flex-col items-center justify-center p-2 rounded-2xl bg-[#f43f5e]/15 border border-[#f43f5e]/25 hover:bg-[#f43f5e]/25 transition-all active:scale-95 text-center shadow-sm"
+              >
+                <div className="w-8 h-8 rounded-full bg-[#f43f5e]/25 text-[#f43f5e] flex items-center justify-center mb-1">
+                  <ArrowDownRight size={16} strokeWidth={2.5} />
+                </div>
+                <span className="text-[11px] font-bold text-white leading-tight">- Расход</span>
+              </button>
 
-            <button
-              onClick={() => setIsGoalModalOpen(true)}
-              className="flex flex-col items-center justify-center p-2 rounded-2xl bg-[#8b5cf6]/15 border border-[#8b5cf6]/25 hover:bg-[#8b5cf6]/25 transition-all active:scale-95 text-center shadow-sm"
-            >
-              <div className="w-8 h-8 rounded-full bg-[#8b5cf6]/25 text-[#8b5cf6] flex items-center justify-center mb-1">
-                <IconTargetGoal size={16} color="#8b5cf6" />
-              </div>
-              <span className="text-[11px] font-bold text-white leading-tight">🎯 Цель</span>
-            </button>
+              <button
+                onClick={() => setIsGoalModalOpen(true)}
+                className="flex flex-col items-center justify-center p-2 rounded-2xl bg-[#8b5cf6]/15 border border-[#8b5cf6]/25 hover:bg-[#8b5cf6]/25 transition-all active:scale-95 text-center shadow-sm"
+              >
+                <div className="w-8 h-8 rounded-full bg-[#8b5cf6]/25 text-[#8b5cf6] flex items-center justify-center mb-1">
+                  <IconTargetGoal size={16} color="#8b5cf6" />
+                </div>
+                <span className="text-[11px] font-bold text-white leading-tight">🎯 Цель</span>
+              </button>
 
-            <button
-              onClick={() => setIsDepositModalOpen(true)}
-              className="flex flex-col items-center justify-center p-2 rounded-2xl bg-[#f59e0b]/15 border border-[#f59e0b]/25 hover:bg-[#f59e0b]/25 transition-all active:scale-95 text-center shadow-sm"
-            >
-              <div className="w-8 h-8 rounded-full bg-[#f59e0b]/25 text-[#f59e0b] flex items-center justify-center mb-1">
-                <IconBankDeposit size={16} color="#f59e0b" />
-              </div>
-              <span className="text-[11px] font-bold text-white leading-tight">🏦 Вклад</span>
-            </button>
-          </div>
+              <button
+                onClick={() => setIsDepositModalOpen(true)}
+                className="flex flex-col items-center justify-center p-2 rounded-2xl bg-[#f59e0b]/15 border border-[#f59e0b]/25 hover:bg-[#f59e0b]/25 transition-all active:scale-95 text-center shadow-sm"
+              >
+                <div className="w-8 h-8 rounded-full bg-[#f59e0b]/25 text-[#f59e0b] flex items-center justify-center mb-1">
+                  <IconBankDeposit size={16} color="#f59e0b" />
+                </div>
+                <span className="text-[11px] font-bold text-white leading-tight">🏦 Вклад</span>
+              </button>
+            </div>
+          )}
 
           {/* Mobile Segmented Tab Switcher (Equal width, no overflowing horizontal scroll) */}
           <div className="flex bg-[#14151c] p-1 rounded-2xl border border-white/[0.08] text-xs shadow-sm">
@@ -1685,177 +1887,916 @@ export const FinanceManagerView: React.FC = () => {
 
         {/* ================= TAB: ANALYTICS & CHARTS ================= */}
         {activeTab === 'analytics' && (
-          <div className="flex-1 p-6 overflow-y-auto space-y-6">
-            {/* Header Title */}
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <BarChart3 size={17} className="text-[#7c5cff]" />
-                  <span>Финансовая аналитика и динамика капитала</span>
-                </h3>
-                <p className="text-xs text-[#94a3b8]">
-                  Наглядный график доходов, расходов и траектории накоплений за {MONTH_NAMES[month]} {year}
-                </p>
-              </div>
-            </div>
-
-            {/* Quick KPI Stat Cards (Responsive 2x2 on Mobile, 4x1 on Desktop) */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
-              <div className="p-3.5 bg-[#14151c] border border-white/[0.08] rounded-2xl flex flex-col justify-between shadow-md">
-                <span className="text-[10px] uppercase font-bold text-[#94a3b8] tracking-wider truncate">
-                  Норма сбережений
-                </span>
-                <div className="flex flex-wrap items-baseline gap-1 mt-1.5">
-                  <span className={`text-lg sm:text-xl font-extrabold font-mono whitespace-nowrap ${stats.savingsRate >= 0 ? 'text-[#10b981]' : 'text-[#f43f5e]'}`}>
-                    {stats.savingsRate}%
-                  </span>
-                  <span className="text-[10px] text-[#94a3b8] whitespace-nowrap">от доходов</span>
-                </div>
-              </div>
-
-              <div className="p-3.5 bg-[#14151c] border border-white/[0.08] rounded-2xl flex flex-col justify-between shadow-md">
-                <span className="text-[10px] uppercase font-bold text-[#94a3b8] tracking-wider truncate">
-                  Расход в день (средний)
-                </span>
-                <div className="flex flex-wrap items-baseline gap-1 mt-1.5">
-                  <span className="text-lg sm:text-xl font-extrabold font-mono text-[#f59e0b] whitespace-nowrap">
-                    {Math.round(stats.totalExpense / daysInMonth).toLocaleString('ru-RU')} ₽
-                  </span>
-                  <span className="text-[10px] text-[#94a3b8] whitespace-nowrap">/ сутки</span>
-                </div>
-              </div>
-
-              <div className="p-3.5 bg-[#14151c] border border-white/[0.08] rounded-2xl flex flex-col justify-between shadow-md">
-                <span className="text-[10px] uppercase font-bold text-[#94a3b8] tracking-wider truncate">
-                  Бюджетный лимит
-                </span>
-                <div className="flex flex-wrap items-baseline gap-1 mt-1.5">
-                  <span className={`text-lg sm:text-xl font-extrabold font-mono whitespace-nowrap ${stats.budgetSpentPercent > 90 ? 'text-[#f43f5e]' : 'text-[#38bdf8]'}`}>
-                    {stats.budgetSpentPercent}%
-                  </span>
-                  <span className="text-[10px] text-[#94a3b8] whitespace-nowrap truncate">
-                    из {monthlyBudgetLimit.toLocaleString('ru-RU')} ₽
-                  </span>
-                </div>
+          <>
+            {/* MOBILE TOUCH-FIRST ANALYTICS (md:hidden) */}
+            <div className="md:hidden flex-1 overflow-y-auto p-3.5 pb-28 space-y-3.5 text-xs">
+              {/* 1. Sub-Tab Segmented Switcher */}
+              <div className="flex bg-[#14151c] p-1 rounded-2xl border border-white/[0.08] text-[11px] shadow-sm">
+                <button
+                  onClick={() => setAnalyticsMobileSubTab('overview')}
+                  className={`flex-1 py-2 rounded-xl font-bold flex items-center justify-center gap-1 transition-all ${
+                    analyticsMobileSubTab === 'overview'
+                      ? 'bg-[#7c5cff] text-white shadow-md'
+                      : 'text-[#94a3b8] hover:text-white'
+                  }`}
+                >
+                  <BarChart3 size={13} />
+                  <span>Обзор</span>
+                </button>
+                <button
+                  onClick={() => setAnalyticsMobileSubTab('chart')}
+                  className={`flex-1 py-2 rounded-xl font-bold flex items-center justify-center gap-1 transition-all ${
+                    analyticsMobileSubTab === 'chart'
+                      ? 'bg-[#7c5cff] text-white shadow-md'
+                      : 'text-[#94a3b8] hover:text-white'
+                  }`}
+                >
+                  <TrendingUp size={13} />
+                  <span>График</span>
+                </button>
+                <button
+                  onClick={() => setAnalyticsMobileSubTab('categories')}
+                  className={`flex-1 py-2 rounded-xl font-bold flex items-center justify-center gap-1 transition-all ${
+                    analyticsMobileSubTab === 'categories'
+                      ? 'bg-[#7c5cff] text-white shadow-md'
+                      : 'text-[#94a3b8] hover:text-white'
+                  }`}
+                >
+                  <PieChart size={13} />
+                  <span>Категории</span>
+                </button>
+                <button
+                  onClick={() => setAnalyticsMobileSubTab('shifts')}
+                  className={`flex-1 py-2 rounded-xl font-bold flex items-center justify-center gap-1 transition-all ${
+                    analyticsMobileSubTab === 'shifts'
+                      ? 'bg-[#7c5cff] text-white shadow-md'
+                      : 'text-[#94a3b8] hover:text-white'
+                  }`}
+                >
+                  <Calendar size={13} />
+                  <span>Смены</span>
+                </button>
               </div>
 
-              <div className="p-3.5 bg-[#14151c] border border-white/[0.08] rounded-2xl flex flex-col justify-between shadow-md">
-                <span className="text-[10px] uppercase font-bold text-[#94a3b8] tracking-wider truncate">
-                  Пассивный доход
-                </span>
-                <div className="flex flex-wrap items-baseline gap-1 mt-1.5">
-                  <span className="text-lg sm:text-xl font-extrabold font-mono text-[#10b981] whitespace-nowrap">
-                    +{stats.totalMonthlyYield.toLocaleString('ru-RU')} ₽
-                  </span>
-                  <span className="text-[10px] text-[#94a3b8] whitespace-nowrap">/ месяц</span>
-                </div>
-              </div>
-            </div>
+              {/* 2. SUB-TAB CONTENT: OVERVIEW (ОБЗОР) */}
+              {analyticsMobileSubTab === 'overview' && (
+                <div className="space-y-3 animate-fade-in">
+                  {/* Clean Month Summary Card */}
+                  <div className="p-4 bg-gradient-to-br from-[#181926] via-[#13141f] to-[#0e0f17] border border-white/[0.1] rounded-2xl space-y-3 shadow-lg">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] uppercase font-bold text-[#94a3b8] tracking-wider">
+                        Сальдо за {MONTH_NAMES[month]}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full bg-[#10b981]/15 text-[#10b981] border border-[#10b981]/30 text-[10px] font-bold flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
+                        {stats.savingsRate}% сохранено
+                      </span>
+                    </div>
 
-            {/* Interactive Multi-Mode Financial Chart Suite */}
-            <FinanceInteractiveChart
-              monthTransactions={monthTransactions}
-              year={year}
-              month={month}
-              monthNames={MONTH_NAMES}
-              categoryColors={CATEGORY_COLORS}
-              allYearTransactions={allYearTransactions}
-              onYearChange={handleSelectYear}
-              onMonthSelect={handleSelectMonth}
-            />
+                    <div className="flex items-baseline gap-2">
+                      <span
+                        className={`text-2xl sm:text-3xl font-black font-mono tracking-tight ${
+                          stats.netSavings >= 0 ? 'text-[#10b981]' : 'text-[#f43f5e]'
+                        }`}
+                      >
+                        {stats.netSavings >= 0 ? '+' : ''}
+                        {formatMoney(stats.netSavings)}
+                      </span>
+                      <span className="text-[11px] text-[#94a3b8]">
+                        {stats.netSavings >= 0 ? 'профицит' : 'дефицит'}
+                      </span>
+                    </div>
 
-            {/* Category Expenses Breakdown Section */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-5 bg-[#14151c] border border-white/[0.08] rounded-2xl space-y-3">
-                <h4 className="text-xs font-bold text-white flex items-center gap-2">
-                  <PieChart size={14} className="text-[#ec4899]" />
-                  <span>Структура расходов по категориям</span>
-                </h4>
-                <div className="space-y-2.5">
-                  {categoryBreakdown.map((item) => (
-                    <div key={item.category} className="space-y-1">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="flex items-center gap-1.5 text-[#cbd5e1]">
-                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
-                          <span>{item.category}</span>
+                    {/* Dual Color Ratio Bar */}
+                    <div className="w-full h-2 bg-white/[0.06] rounded-full overflow-hidden flex">
+                      <div
+                        className="bg-emerald-500 h-full transition-all duration-500"
+                        style={{
+                          width: `${
+                            stats.totalIncome + stats.totalExpense > 0
+                              ? Math.round((stats.totalIncome / (stats.totalIncome + stats.totalExpense)) * 100)
+                              : 50
+                          }%`,
+                        }}
+                      />
+                      <div
+                        className="bg-rose-500 h-full transition-all duration-500"
+                        style={{
+                          width: `${
+                            stats.totalIncome + stats.totalExpense > 0
+                              ? Math.round((stats.totalExpense / (stats.totalIncome + stats.totalExpense)) * 100)
+                              : 50
+                          }%`,
+                        }}
+                      />
+                    </div>
+
+                    {/* Income & Expense Breakdown */}
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+                        <span className="text-[10px] text-emerald-400 block font-medium">Доходы за месяц</span>
+                        <span className="text-sm font-black font-mono text-emerald-400 block mt-0.5">
+                          +{formatMoney(stats.totalIncome)}
                         </span>
-                        <div className="flex items-center gap-2 font-mono">
-                          <span className="text-[#94a3b8] text-[11px]">{item.percent}%</span>
-                          <span className="font-bold text-white">{item.amount.toLocaleString('ru-RU')} ₽</span>
-                        </div>
+                        {shiftStats.totalEarnings > 0 && (
+                          <span className="text-[9px] text-emerald-300/80 block mt-0.5">
+                            из них смен: {formatMoney(shiftStats.totalEarnings)}
+                          </span>
+                        )}
                       </div>
-                      <div className="w-full h-1.5 bg-white/[0.04] rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-500"
-                          style={{
-                            width: `${item.percent}%`,
-                            backgroundColor: item.color,
-                          }}
-                        />
+                      <div className="p-2.5 bg-rose-500/10 border border-rose-500/20 rounded-xl">
+                        <span className="text-[10px] text-rose-400 block font-medium">Расходы за месяц</span>
+                        <span className="text-sm font-black font-mono text-rose-400 block mt-0.5">
+                          -{formatMoney(stats.totalExpense)}
+                        </span>
+                        {monthlyBudgetLimit > 0 && (
+                          <span className="text-[9px] text-rose-300/80 block mt-0.5">
+                            {stats.budgetSpentPercent}% от лимита
+                          </span>
+                        )}
                       </div>
                     </div>
-                  ))}
+                  </div>
 
-                  {categoryBreakdown.length === 0 && (
-                    <p className="text-xs text-[#64748b] italic py-4 text-center">
-                      В этом месяце еще нет расходов
-                    </p>
+                  {/* 4 Touch KPI Cards Grid (2x2) */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="p-3 bg-[#14151c] border border-white/[0.08] rounded-2xl flex flex-col justify-between shadow-sm">
+                      <div className="flex items-center justify-between text-[#94a3b8]">
+                        <span className="text-[10px] font-bold uppercase tracking-wider">Сбережения</span>
+                        <Percent size={12} className="text-[#10b981]" />
+                      </div>
+                      <div className="mt-1.5">
+                        <span className={`text-base font-black font-mono ${stats.savingsRate >= 0 ? 'text-[#10b981]' : 'text-[#f43f5e]'}`}>
+                          {stats.savingsRate}%
+                        </span>
+                        <span className="text-[9px] text-[#64748b] block mt-0.5">от всех доходов</span>
+                      </div>
+                    </div>
+
+                    <div className="p-3 bg-[#14151c] border border-white/[0.08] rounded-2xl flex flex-col justify-between shadow-sm">
+                      <div className="flex items-center justify-between text-[#94a3b8]">
+                        <span className="text-[10px] font-bold uppercase tracking-wider">Расход в день</span>
+                        <Clock size={12} className="text-[#f59e0b]" />
+                      </div>
+                      <div className="mt-1.5">
+                        <span className="text-base font-black font-mono text-[#f59e0b]">
+                          {Math.round(stats.totalExpense / daysInMonth).toLocaleString('ru-RU')} ₽
+                        </span>
+                        <span className="text-[9px] text-[#64748b] block mt-0.5">в среднем за сутки</span>
+                      </div>
+                    </div>
+
+                    <div className="p-3 bg-[#14151c] border border-white/[0.08] rounded-2xl flex flex-col justify-between shadow-sm">
+                      <div className="flex items-center justify-between text-[#94a3b8]">
+                        <span className="text-[10px] font-bold uppercase tracking-wider">Лимит бюджета</span>
+                        <Sliders size={12} className="text-[#38bdf8]" />
+                      </div>
+                      <div className="mt-1.5">
+                        <span className={`text-base font-black font-mono ${stats.budgetSpentPercent > 90 ? 'text-[#f43f5e]' : 'text-[#38bdf8]'}`}>
+                          {stats.budgetSpentPercent}%
+                        </span>
+                        <span className="text-[9px] text-[#64748b] block mt-0.5 truncate">
+                          лимит {monthlyBudgetLimit > 0 ? `${monthlyBudgetLimit.toLocaleString('ru-RU')} ₽` : 'не задан'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="p-3 bg-[#14151c] border border-white/[0.08] rounded-2xl flex flex-col justify-between shadow-sm">
+                      <div className="flex items-center justify-between text-[#94a3b8]">
+                        <span className="text-[10px] font-bold uppercase tracking-wider">Пассивный доход</span>
+                        <IconBankDeposit size={12} color="#10b981" />
+                      </div>
+                      <div className="mt-1.5">
+                        <span className="text-base font-black font-mono text-[#10b981]">
+                          +{stats.totalMonthlyYield.toLocaleString('ru-RU')} ₽
+                        </span>
+                        <span className="text-[9px] text-[#64748b] block mt-0.5">в месяц со вкладов</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Smart Financial Verdict Card */}
+                  <div className="p-3.5 bg-[#14151c] border border-white/[0.08] rounded-2xl space-y-2 shadow-sm">
+                    <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <Sparkles size={14} className="text-[#7c5cff]" />
+                      <span>Финансовый итог</span>
+                    </h4>
+                    <div className="text-[11px] text-[#cbd5e1] leading-relaxed space-y-1">
+                      <p>
+                        {stats.netSavings >= 0 ? (
+                          <span className="text-[#10b981] font-medium">
+                            ✅ Профицит бюджета: сохранено {stats.netSavings.toLocaleString('ru-RU')} ₽ ({stats.savingsRate}% от дохода).
+                          </span>
+                        ) : (
+                          <span className="text-[#f43f5e] font-medium">
+                            ⚠️ Расходы превысили доходы на {Math.abs(stats.netSavings).toLocaleString('ru-RU')} ₽.
+                          </span>
+                        )}
+                      </p>
+                      {categoryBreakdown[0] && (
+                        <p className="text-[#94a3b8]">
+                          Главная статья затрат — <strong className="text-white">{categoryBreakdown[0].category}</strong> ({categoryBreakdown[0].amount.toLocaleString('ru-RU')} ₽, {categoryBreakdown[0].percent}% от трат).
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Quick Action Navigation */}
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <button
+                      onClick={() => setAnalyticsMobileSubTab('chart')}
+                      className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.08] text-white text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors"
+                    >
+                      <TrendingUp size={13} className="text-[#7c5cff]" />
+                      <span>Динамика по дням</span>
+                    </button>
+                    <button
+                      onClick={() => setAnalyticsMobileSubTab('categories')}
+                      className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.08] text-white text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors"
+                    >
+                      <PieChart size={13} className="text-[#ec4899]" />
+                      <span>Структура категорий</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 3. SUB-TAB CONTENT: CHART (ГРАФИК ДИНАМИКИ) */}
+              {analyticsMobileSubTab === 'chart' && (
+                <div className="space-y-3.5 animate-fade-in">
+                  {/* Mode Switcher: By Weeks vs By Days */}
+                  <div className="flex items-center justify-between bg-[#14151c] p-1 rounded-xl border border-white/[0.08]">
+                    <span className="text-[11px] font-bold text-[#94a3b8] px-2">Вид графика:</span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setMobileChartMode('weeks')}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                          mobileChartMode === 'weeks'
+                            ? 'bg-[#7c5cff] text-white shadow-sm'
+                            : 'text-[#94a3b8] hover:text-white'
+                        }`}
+                      >
+                        По неделям
+                      </button>
+                      <button
+                        onClick={() => setMobileChartMode('days')}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                          mobileChartMode === 'days'
+                            ? 'bg-[#7c5cff] text-white shadow-sm'
+                            : 'text-[#94a3b8] hover:text-white'
+                        }`}
+                      >
+                        По дням (1–{daysInMonth})
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Mode 1: Weekly Breakdown (Fits 100% on phone without scrolling!) */}
+                  {mobileChartMode === 'weeks' && (
+                    <div className="space-y-2.5">
+                      <div className="p-3.5 bg-[#14151c] border border-white/[0.08] rounded-2xl space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                            <Calendar size={13} className="text-[#7c5cff]" />
+                            <span>Динамика по 4 неделям месяца</span>
+                          </span>
+                          <div className="flex items-center gap-2 text-[10px]">
+                            <span className="flex items-center gap-1 text-emerald-400">
+                              <span className="w-2 h-2 rounded-full bg-emerald-500" /> Доход
+                            </span>
+                            <span className="flex items-center gap-1 text-rose-400">
+                              <span className="w-2 h-2 rounded-full bg-rose-500" /> Расход
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* 4 Weekly Bars Comparison */}
+                        <div className="grid grid-cols-4 gap-2 pt-2 pb-1">
+                          {weeklyChartData.weeks.map((w) => {
+                            const isSelected = selectedMobileWeek === w.id;
+                            const incHeight = weeklyChartData.maxWeeklyAmount > 0
+                              ? Math.max(w.income > 0 ? 8 : 0, Math.round((w.income / weeklyChartData.maxWeeklyAmount) * 70))
+                              : 0;
+                            const expHeight = weeklyChartData.maxWeeklyAmount > 0
+                              ? Math.max(w.expense > 0 ? 8 : 0, Math.round((w.expense / weeklyChartData.maxWeeklyAmount) * 70))
+                              : 0;
+                            const hasActivity = w.income > 0 || w.expense > 0;
+
+                            return (
+                              <button
+                                key={w.id}
+                                onClick={() => setSelectedMobileWeek(isSelected ? null : w.id)}
+                                className={`flex flex-col items-center p-2 rounded-xl transition-all ${
+                                  isSelected
+                                    ? 'bg-[#7c5cff]/20 border border-[#7c5cff] shadow-md ring-1 ring-[#7c5cff]/40'
+                                    : 'bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.06]'
+                                }`}
+                              >
+                                {/* Bars area */}
+                                <div className="flex items-end justify-center gap-1 h-20 w-full">
+                                  {/* Income bar */}
+                                  <div
+                                    className="w-2.5 bg-gradient-to-t from-emerald-600 to-emerald-400 rounded-t-md transition-all"
+                                    style={{ height: `${incHeight}px` }}
+                                    title={`Доход: ${w.income} ₽`}
+                                  />
+                                  {/* Expense bar */}
+                                  <div
+                                    className="w-2.5 bg-gradient-to-t from-rose-600 to-rose-400 rounded-t-md transition-all"
+                                    style={{ height: `${expHeight}px` }}
+                                    title={`Расход: ${w.expense} ₽`}
+                                  />
+                                  {!hasActivity && (
+                                    <div className="w-1.5 h-1.5 rounded-full bg-white/10 mb-1" />
+                                  )}
+                                </div>
+
+                                <span className={`text-[10px] font-bold mt-1.5 truncate ${isSelected ? 'text-[#a78bfa]' : 'text-white'}`}>
+                                  {w.shortName}
+                                </span>
+                                <span className="text-[9px] text-[#64748b] truncate">
+                                  {w.range}
+                                </span>
+
+                                <span className={`text-[9px] font-mono font-bold mt-1 ${w.net >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                  {w.net >= 0 ? '+' : ''}{Math.round(w.net / 1000)}к
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Selected Week Drilldown Card */}
+                      {selectedMobileWeek !== null && (() => {
+                        const weekObj = weeklyChartData.weeks.find((w) => w.id === selectedMobileWeek);
+                        if (!weekObj) return null;
+                        return (
+                          <div className="p-3.5 bg-[#7c5cff]/10 border border-[#7c5cff]/30 rounded-2xl space-y-2.5 animate-slide-up">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-white flex items-center gap-1.5">
+                                <Calendar size={13} className="text-[#a78bfa]" />
+                                <span>Операции: {weekObj.name} ({weekObj.range} {MONTH_NAMES[month]})</span>
+                              </span>
+                              <button
+                                onClick={() => setSelectedMobileWeek(null)}
+                                className="text-[#94a3b8] hover:text-white p-1"
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-1.5 text-center font-mono">
+                              <div className="p-2 bg-black/30 rounded-xl">
+                                <div className="text-[9px] text-[#94a3b8]">Доход</div>
+                                <div className="text-xs font-bold text-emerald-400">
+                                  +{weekObj.income.toLocaleString('ru-RU')} ₽
+                                </div>
+                              </div>
+                              <div className="p-2 bg-black/30 rounded-xl">
+                                <div className="text-[9px] text-[#94a3b8]">Расход</div>
+                                <div className="text-xs font-bold text-rose-400">
+                                  -{weekObj.expense.toLocaleString('ru-RU')} ₽
+                                </div>
+                              </div>
+                              <div className="p-2 bg-black/30 rounded-xl">
+                                <div className="text-[9px] text-[#94a3b8]">Итог</div>
+                                <div className={`text-xs font-bold ${weekObj.net >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                  {weekObj.net >= 0 ? '+' : ''}{weekObj.net.toLocaleString('ru-RU')} ₽
+                                </div>
+                              </div>
+                            </div>
+
+                            {weekObj.txs.length > 0 ? (
+                              <div className="space-y-1 max-h-48 overflow-y-auto pt-1">
+                                {weekObj.txs.map((tx) => (
+                                  <div
+                                    key={tx.id}
+                                    className="flex items-center justify-between p-2 bg-black/30 rounded-xl text-[11px]"
+                                  >
+                                    <div className="truncate mr-2">
+                                      <div className="text-white font-medium truncate">{tx.description || tx.category}</div>
+                                      <div className="text-[9px] text-[#94a3b8]">{tx.date} • {tx.category}</div>
+                                    </div>
+                                    <span
+                                      className={`font-mono font-bold whitespace-nowrap ${
+                                        tx.type === 'income' ? 'text-emerald-400' : 'text-rose-400'
+                                      }`}
+                                    >
+                                      {tx.type === 'income' ? '+' : '-'}{tx.amount.toLocaleString('ru-RU')} ₽
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-[10px] text-[#94a3b8] italic text-center py-1">
+                                В эту неделю операций не зафиксировано
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
                   )}
+
+                  {/* Mode 2: Daily Flow Bar Chart */}
+                  {mobileChartMode === 'days' && (
+                    <div className="p-3.5 bg-[#14151c] border border-white/[0.08] rounded-2xl space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                          <BarChart3 size={14} className="text-[#7c5cff]" />
+                          <span>По дням (1–{daysInMonth} {MONTH_NAMES[month]})</span>
+                        </h4>
+                        <span className="text-[10px] text-[#64748b]">Листайте влево/вправо 👉</span>
+                      </div>
+
+                      {/* Horizontal scrollable bar container */}
+                      <div className="overflow-x-auto pb-2 -mx-1 px-1 touch-pan-x select-none">
+                        <div className="flex items-end gap-1.5 min-w-max h-28 pt-2">
+                          {dailyChartData.map((d) => {
+                            const isSelected = selectedMobileDay === d.day;
+                            const incHeight = maxDailyAmount > 0 ? Math.max(d.income > 0 ? 6 : 0, Math.round((d.income / maxDailyAmount) * 60)) : 0;
+                            const expHeight = maxDailyAmount > 0 ? Math.max(d.expense > 0 ? 6 : 0, Math.round((d.expense / maxDailyAmount) * 60)) : 0;
+                            const hasActivity = d.income > 0 || d.expense > 0;
+
+                            return (
+                              <button
+                                key={d.day}
+                                onClick={() => setSelectedMobileDay(isSelected ? null : d.day)}
+                                className={`flex flex-col items-center justify-end w-7 h-full rounded-xl transition-all ${
+                                  isSelected
+                                    ? 'bg-[#7c5cff]/20 border border-[#7c5cff] shadow-md ring-1 ring-[#7c5cff]/40'
+                                    : hasActivity
+                                    ? 'hover:bg-white/[0.04]'
+                                    : 'opacity-40'
+                                }`}
+                              >
+                                <div className="flex items-end gap-0.5 h-16 w-full justify-center">
+                                  {/* Income bar */}
+                                  {incHeight > 0 && (
+                                    <div
+                                      className="w-2.5 bg-gradient-to-t from-emerald-600 to-emerald-400 rounded-t-sm transition-all"
+                                      style={{ height: `${incHeight}px` }}
+                                      title={`Доход: ${d.income} ₽`}
+                                    />
+                                  )}
+                                  {/* Expense bar */}
+                                  {expHeight > 0 && (
+                                    <div
+                                      className="w-2.5 bg-gradient-to-t from-rose-600 to-rose-400 rounded-t-sm transition-all"
+                                      style={{ height: `${expHeight}px` }}
+                                      title={`Расход: ${d.expense} ₽`}
+                                    />
+                                  )}
+                                  {!hasActivity && (
+                                    <div className="w-1.5 h-1.5 rounded-full bg-white/10 mb-1" />
+                                  )}
+                                </div>
+                                <span
+                                  className={`text-[9px] font-mono mt-1 ${
+                                    isSelected ? 'text-[#a78bfa] font-bold' : hasActivity ? 'text-[#cbd5e1]' : 'text-[#64748b]'
+                                  }`}
+                                >
+                                  {d.day}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Day Inspector Card if a day is tapped */}
+                      {selectedMobileDay !== null && (() => {
+                        const dayData = dailyChartData.find((d) => d.day === selectedMobileDay);
+                        if (!dayData) return null;
+                        return (
+                          <div className="p-3 bg-[#7c5cff]/10 border border-[#7c5cff]/30 rounded-xl space-y-2.5">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-white flex items-center gap-1.5">
+                                <Calendar size={13} className="text-[#a78bfa]" />
+                                <span>{dayData.day} {MONTH_NAMES[month]} {year}</span>
+                              </span>
+                              <button
+                                onClick={() => setSelectedMobileDay(null)}
+                                className="text-[#94a3b8] hover:text-white p-1"
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-1.5 text-center font-mono">
+                              <div className="p-1.5 bg-black/20 rounded-lg">
+                                <div className="text-[9px] text-[#94a3b8]">Доход</div>
+                                <div className="text-xs font-bold text-emerald-400">
+                                  +{dayData.income.toLocaleString('ru-RU')} ₽
+                                </div>
+                              </div>
+                              <div className="p-1.5 bg-black/20 rounded-lg">
+                                <div className="text-[9px] text-[#94a3b8]">Расход</div>
+                                <div className="text-xs font-bold text-rose-400">
+                                  -{dayData.expense.toLocaleString('ru-RU')} ₽
+                                </div>
+                              </div>
+                              <div className="p-1.5 bg-black/20 rounded-lg">
+                                <div className="text-[9px] text-[#94a3b8]">Итог дня</div>
+                                <div className={`text-xs font-bold ${dayData.net >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                  {dayData.net >= 0 ? '+' : ''}{dayData.net.toLocaleString('ru-RU')} ₽
+                                </div>
+                              </div>
+                            </div>
+
+                            {dayData.txs.length > 0 ? (
+                              <div className="space-y-1 pt-1 max-h-36 overflow-y-auto">
+                                {dayData.txs.map((tx) => (
+                                  <div
+                                    key={tx.id}
+                                    className="flex items-center justify-between p-1.5 bg-black/30 rounded-lg text-[11px]"
+                                  >
+                                    <div className="truncate mr-2">
+                                      <span className="text-white font-medium">{tx.description || tx.category}</span>
+                                      <span className="text-[9px] text-[#64748b] ml-1.5">({tx.category})</span>
+                                    </div>
+                                    <span
+                                      className={`font-mono font-bold whitespace-nowrap ${
+                                        tx.type === 'income' ? 'text-emerald-400' : 'text-rose-400'
+                                      }`}
+                                    >
+                                      {tx.type === 'income' ? '+' : '-'}{tx.amount.toLocaleString('ru-RU')} ₽
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-[10px] text-[#94a3b8] italic text-center py-1">
+                                В этот день не было операций
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 4. SUB-TAB CONTENT: CATEGORIES (КАТЕГОРИИ РАСХОДОВ) */}
+              {analyticsMobileSubTab === 'categories' && (
+                <div className="space-y-3 animate-fade-in">
+                  <div className="p-3.5 bg-[#14151c] border border-white/[0.08] rounded-2xl space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                        <PieChart size={14} className="text-[#ec4899]" />
+                        <span>Структура расходов ({categoryBreakdown.length})</span>
+                      </h4>
+                      <span className="font-mono text-xs font-black text-rose-400">
+                        -{stats.totalExpense.toLocaleString('ru-RU')} ₽
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      {categoryBreakdown.map((item) => {
+                        const isExpanded = selectedAnalyticsCat === item.category;
+
+                        return (
+                          <div
+                            key={item.category}
+                            className={`p-2.5 rounded-xl border transition-all ${
+                              isExpanded
+                                ? 'bg-[#7c5cff]/10 border-[#7c5cff]/40 shadow-sm'
+                                : 'bg-white/[0.02] border-white/[0.04] hover:bg-white/[0.05]'
+                            }`}
+                          >
+                            <div
+                              onClick={() => setSelectedAnalyticsCat(isExpanded ? null : item.category)}
+                              className="cursor-pointer space-y-1.5"
+                            >
+                              <div className="flex items-center justify-between text-[11px]">
+                                <span className="flex items-center gap-1.5 text-white font-medium truncate mr-2">
+                                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                                  <span className="truncate">{item.category}</span>
+                                </span>
+                                <div className="flex items-center gap-2 font-mono shrink-0">
+                                  <span className="text-[#94a3b8] text-[10px] font-bold">{item.percent}%</span>
+                                  <span className="font-bold text-white">{item.amount.toLocaleString('ru-RU')} ₽</span>
+                                  <ChevronDown size={12} className={`text-[#94a3b8] transition-transform ${isExpanded ? 'rotate-180 text-white' : ''}`} />
+                                </div>
+                              </div>
+                              <div className="w-full h-1.5 bg-white/[0.04] rounded-full overflow-hidden">
+                                <div
+                                  className="h-full rounded-full transition-all duration-500"
+                                  style={{
+                                    width: `${item.percent}%`,
+                                    backgroundColor: item.color,
+                                  }}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Expanded Category Transactions Drilldown */}
+                            {isExpanded && (
+                              <div className="mt-2 pt-2 border-t border-white/[0.06] space-y-1 animate-slide-up">
+                                <div className="text-[10px] text-[#94a3b8] font-semibold mb-1">
+                                  Операции по категории ({item.txs.length}):
+                                </div>
+                                {item.txs.length > 0 ? (
+                                  <div className="space-y-1 max-h-36 overflow-y-auto">
+                                    {item.txs.map((tx) => (
+                                      <div
+                                        key={tx.id}
+                                        className="flex items-center justify-between p-1.5 bg-black/30 rounded-lg text-[10px]"
+                                      >
+                                        <div className="truncate mr-2">
+                                          <span className="text-[#e2e8f0] font-medium">{tx.description || tx.category}</span>
+                                          <span className="text-[#64748b] ml-1.5 font-mono">{tx.date}</span>
+                                        </div>
+                                        <span className="font-mono font-bold text-rose-400 whitespace-nowrap">
+                                          -{tx.amount.toLocaleString('ru-RU')} ₽
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <p className="text-[10px] text-[#64748b] italic">Нет транзакций</p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      {categoryBreakdown.length === 0 && (
+                        <p className="text-xs text-[#64748b] italic py-4 text-center">
+                          В этом месяце еще нет расходов
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 5. SUB-TAB CONTENT: SHIFTS (СМЕНЫ И КАЛЕНДАРЬ) */}
+              {analyticsMobileSubTab === 'shifts' && (
+                <div className="space-y-3 animate-fade-in">
+                  <div className="p-4 bg-gradient-to-br from-[#10b981]/15 via-[#10b981]/5 to-[#06b6d4]/10 border border-[#10b981]/30 rounded-2xl space-y-3 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-[#10b981] uppercase font-black tracking-wider flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-[#10b981] animate-pulse" />
+                        Смены из Календаря
+                      </span>
+                      <span className="text-xs font-black font-mono px-2 py-0.5 rounded-lg bg-black/40 text-[#38bdf8] border border-[#38bdf8]/30">
+                        {shiftStats.totalShifts} смен
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="p-2.5 rounded-xl bg-black/30 border border-white/[0.06]">
+                        <span className="text-[9px] text-[#94a3b8] block">Часов отработано</span>
+                        <span className="font-black text-white font-mono text-sm">{shiftStats.totalHours} ч</span>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-black/30 border border-white/[0.06]">
+                        <span className="text-[9px] text-[#94a3b8] block">В среднем / смена</span>
+                        <span className="font-black text-[#10b981] font-mono text-sm">
+                          {shiftStats.avgEarningsPerShift.toLocaleString('ru-RU')} ₽
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-black/30 border border-white/[0.06] space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-[#94a3b8]">Уже выплачено:</span>
+                        <span className="font-bold text-[#10b981] font-mono">
+                          +{shiftStats.completedEarnings.toLocaleString('ru-RU')} ₽
+                        </span>
+                      </div>
+                      {shiftStats.upcomingEarnings > 0 && (
+                        <div className="flex items-center justify-between text-xs pt-1 border-t border-white/[0.06]">
+                          <span className="text-[#94a3b8]">Ожидается до конца мес:</span>
+                          <span className="font-bold text-[#38bdf8] font-mono">
+                            +{shiftStats.upcomingEarnings.toLocaleString('ru-RU')} ₽
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Shifts List for this month */}
+                  <div className="p-3.5 bg-[#14151c] border border-white/[0.08] rounded-2xl space-y-2.5">
+                    <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <Calendar size={13} className="text-[#38bdf8]" />
+                      <span>График смен за {MONTH_NAMES[month]}</span>
+                    </h4>
+                    {shifts && shifts.filter((s) => (s.date || '').startsWith(monthPrefix) && (s.earnings || 0) > 0).length > 0 ? (
+                      <div className="space-y-1 max-h-48 overflow-y-auto">
+                        {shifts
+                          .filter((s) => (s.date || '').startsWith(monthPrefix) && (s.earnings || 0) > 0)
+                          .sort((a, b) => b.date.localeCompare(a.date))
+                          .map((s) => (
+                            <div
+                              key={s.id}
+                              className="flex items-center justify-between p-2 bg-black/30 rounded-xl text-[11px]"
+                            >
+                              <div className="truncate mr-2">
+                                <div className="text-white font-medium">{s.date} • {s.type === 'day' ? 'Дневная смена' : s.type === 'night' ? 'Ночная смена' : 'Смена'}</div>
+                                <div className="text-[9px] text-[#94a3b8]">{s.hours || 0} часов</div>
+                              </div>
+                              <span className="font-mono font-bold text-emerald-400 whitespace-nowrap">
+                                +{(s.earnings || 0).toLocaleString('ru-RU')} ₽
+                              </span>
+                            </div>
+                          ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-[#64748b] italic py-2 text-center">
+                        В этом месяце нет рабочих смен с доходом
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* 6. Export Full Report to Notes Button */}
+              <button
+                onClick={handleExportReportToNote}
+                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-[#7c5cff] to-[#6366f1] hover:from-[#6d4df6] hover:to-[#5558e6] text-white font-bold flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20 active:scale-[0.98] transition-all"
+              >
+                <FileText size={15} />
+                <span>📝 Сохранить финансовый отчет в Заметки</span>
+              </button>
+            </div>
+
+            {/* DESKTOP ANALYTICS & CHARTS (hidden md:block) */}
+            <div className="hidden md:block flex-1 p-6 overflow-y-auto space-y-6">
+              {/* Header Title */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <BarChart3 size={17} className="text-[#7c5cff]" />
+                    <span>Финансовая аналитика и динамика капитала</span>
+                  </h3>
+                  <p className="text-xs text-[#94a3b8]">
+                    Наглядный график доходов, расходов и траектории накоплений за {MONTH_NAMES[month]} {year}
+                  </p>
                 </div>
               </div>
 
-              {/* Monthly Overview & Advice Card */}
-              <div className="p-5 bg-[#14151c] border border-white/[0.08] rounded-2xl space-y-3 flex flex-col justify-between">
-                <div>
-                  <h4 className="text-xs font-bold text-white flex items-center gap-2">
-                    <TrendingUp size={14} className="text-[#10b981]" />
-                    <span>Финансовый вердикт за месяц</span>
-                  </h4>
-                  <div className="mt-3 space-y-2 text-xs text-[#94a3b8] leading-relaxed">
-                    <p>
-                      {stats.netSavings >= 0 ? (
-                        <span className="text-[#10b981] font-semibold">
-                          Положительный баланс: вы сохранили {stats.netSavings.toLocaleString('ru-RU')} ₽ ({stats.savingsRate}% от дохода).
-                        </span>
-                      ) : (
-                        <span className="text-[#f43f5e] font-semibold">
-                          Дефицит бюджета: расходы превысили доходы на {Math.abs(stats.netSavings).toLocaleString('ru-RU')} ₽.
-                        </span>
-                      )}
-                    </p>
-                    <p>
-                      Крупнейшая статья затрат —{' '}
-                      <strong className="text-white">
-                        {categoryBreakdown[0]?.category || 'Отсутствует'}
-                      </strong>{' '}
-                      ({categoryBreakdown[0]?.amount.toLocaleString('ru-RU') || 0} ₽).
-                    </p>
+              {/* Quick KPI Stat Cards (4x1 on Desktop) */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+                <div className="p-3.5 bg-[#14151c] border border-white/[0.08] rounded-2xl flex flex-col justify-between shadow-md">
+                  <span className="text-[10px] uppercase font-bold text-[#94a3b8] tracking-wider truncate">
+                    Норма сбережений
+                  </span>
+                  <div className="flex flex-wrap items-baseline gap-1 mt-1.5">
+                    <span className={`text-lg sm:text-xl font-extrabold font-mono whitespace-nowrap ${stats.savingsRate >= 0 ? 'text-[#10b981]' : 'text-[#f43f5e]'}`}>
+                      {stats.savingsRate}%
+                    </span>
+                    <span className="text-[10px] text-[#94a3b8] whitespace-nowrap">от доходов</span>
                   </div>
                 </div>
 
-                <div className="p-3 bg-white/[0.02] border border-white/[0.06] rounded-xl space-y-1.5 text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[#94a3b8] flex items-center gap-1.5">
-                      <IconBankDeposit size={12} color="#f59e0b" />
-                      <span>Вклады в банках:</span>
+                <div className="p-3.5 bg-[#14151c] border border-white/[0.08] rounded-2xl flex flex-col justify-between shadow-md">
+                  <span className="text-[10px] uppercase font-bold text-[#94a3b8] tracking-wider truncate">
+                    Расход в день (средний)
+                  </span>
+                  <div className="flex flex-wrap items-baseline gap-1 mt-1.5">
+                    <span className="text-lg sm:text-xl font-extrabold font-mono text-[#f59e0b] whitespace-nowrap">
+                      {Math.round(stats.totalExpense / daysInMonth).toLocaleString('ru-RU')} ₽
                     </span>
-                    <span className="font-bold text-[#f59e0b] font-mono">
-                      {stats.totalDepositsBalance.toLocaleString('ru-RU')} ₽ (+{stats.totalMonthlyYield.toLocaleString('ru-RU')} ₽/мес)
+                    <span className="text-[10px] text-[#94a3b8] whitespace-nowrap">/ сутки</span>
+                  </div>
+                </div>
+
+                <div className="p-3.5 bg-[#14151c] border border-white/[0.08] rounded-2xl flex flex-col justify-between shadow-md">
+                  <span className="text-[10px] uppercase font-bold text-[#94a3b8] tracking-wider truncate">
+                    Бюджетный лимит
+                  </span>
+                  <div className="flex flex-wrap items-baseline gap-1 mt-1.5">
+                    <span className={`text-lg sm:text-xl font-extrabold font-mono whitespace-nowrap ${stats.budgetSpentPercent > 90 ? 'text-[#f43f5e]' : 'text-[#38bdf8]'}`}>
+                      {stats.budgetSpentPercent}%
+                    </span>
+                    <span className="text-[10px] text-[#94a3b8] whitespace-nowrap truncate">
+                      из {monthlyBudgetLimit.toLocaleString('ru-RU')} ₽
                     </span>
                   </div>
-                  <div className="flex items-center justify-between pt-1 border-t border-white/[0.04]">
-                    <span className="text-[#94a3b8] flex items-center gap-1.5">
-                      <IconTargetGoal size={12} color="#7c5cff" />
-                      <span>Накоплено на цели:</span>
+                </div>
+
+                <div className="p-3.5 bg-[#14151c] border border-white/[0.08] rounded-2xl flex flex-col justify-between shadow-md">
+                  <span className="text-[10px] uppercase font-bold text-[#94a3b8] tracking-wider truncate">
+                    Пассивный доход
+                  </span>
+                  <div className="flex flex-wrap items-baseline gap-1 mt-1.5">
+                    <span className="text-lg sm:text-xl font-extrabold font-mono text-[#10b981] whitespace-nowrap">
+                      +{stats.totalMonthlyYield.toLocaleString('ru-RU')} ₽
                     </span>
-                    <span className="font-bold text-[#a78bfa] font-mono">
-                      {stats.totalGoalsSaved.toLocaleString('ru-RU')} ₽ из {stats.totalGoalsTarget.toLocaleString('ru-RU')} ₽
-                    </span>
+                    <span className="text-[10px] text-[#94a3b8] whitespace-nowrap">/ месяц</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Interactive Multi-Mode Financial Chart Suite */}
+              <FinanceInteractiveChart
+                monthTransactions={monthTransactions}
+                year={year}
+                month={month}
+                monthNames={MONTH_NAMES}
+                categoryColors={CATEGORY_COLORS}
+                allYearTransactions={allYearTransactions}
+                onYearChange={handleSelectYear}
+                onMonthSelect={handleSelectMonth}
+              />
+
+              {/* Category Expenses Breakdown Section */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-5 bg-[#14151c] border border-white/[0.08] rounded-2xl space-y-3">
+                  <h4 className="text-xs font-bold text-white flex items-center gap-2">
+                    <PieChart size={14} className="text-[#ec4899]" />
+                    <span>Структура расходов по категориям</span>
+                  </h4>
+                  <div className="space-y-2.5">
+                    {categoryBreakdown.map((item) => (
+                      <div key={item.category} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="flex items-center gap-1.5 text-[#cbd5e1]">
+                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
+                            <span>{item.category}</span>
+                          </span>
+                          <div className="flex items-center gap-2 font-mono">
+                            <span className="text-[#94a3b8] text-[11px]">{item.percent}%</span>
+                            <span className="font-bold text-white">{item.amount.toLocaleString('ru-RU')} ₽</span>
+                          </div>
+                        </div>
+                        <div className="w-full h-1.5 bg-white/[0.04] rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{
+                              width: `${item.percent}%`,
+                              backgroundColor: item.color,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+
+                    {categoryBreakdown.length === 0 && (
+                      <p className="text-xs text-[#64748b] italic py-4 text-center">
+                        В этом месяце еще нет расходов
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Monthly Overview & Advice Card */}
+                <div className="p-5 bg-[#14151c] border border-white/[0.08] rounded-2xl space-y-3 flex flex-col justify-between">
+                  <div>
+                    <h4 className="text-xs font-bold text-white flex items-center gap-2">
+                      <TrendingUp size={14} className="text-[#10b981]" />
+                      <span>Финансовый вердикт за месяц</span>
+                    </h4>
+                    <div className="mt-3 space-y-2 text-xs text-[#94a3b8] leading-relaxed">
+                      <p>
+                        {stats.netSavings >= 0 ? (
+                          <span className="text-[#10b981] font-semibold">
+                            Положительный баланс: вы сохранили {stats.netSavings.toLocaleString('ru-RU')} ₽ ({stats.savingsRate}% от дохода).
+                          </span>
+                        ) : (
+                          <span className="text-[#f43f5e] font-semibold">
+                            Дефицит бюджета: расходы превысили доходы на {Math.abs(stats.netSavings).toLocaleString('ru-RU')} ₽.
+                          </span>
+                        )}
+                      </p>
+                      <p>
+                        Крупнейшая статья затрат —{' '}
+                        <strong className="text-white">
+                          {categoryBreakdown[0]?.category || 'Отсутствует'}
+                        </strong>{' '}
+                        ({categoryBreakdown[0]?.amount.toLocaleString('ru-RU') || 0} ₽).
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-white/[0.02] border border-white/[0.06] rounded-xl space-y-1.5 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[#94a3b8] flex items-center gap-1.5">
+                        <IconBankDeposit size={12} color="#f59e0b" />
+                        <span>Вклады в банках:</span>
+                      </span>
+                      <span className="font-bold text-[#f59e0b] font-mono">
+                        {stats.totalDepositsBalance.toLocaleString('ru-RU')} ₽ (+{stats.totalMonthlyYield.toLocaleString('ru-RU')} ₽/мес)
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between pt-1 border-t border-white/[0.04]">
+                      <span className="text-[#94a3b8] flex items-center gap-1.5">
+                        <IconTargetGoal size={12} color="#7c5cff" />
+                        <span>Накоплено на цели:</span>
+                      </span>
+                      <span className="font-bold text-[#a78bfa] font-mono">
+                        {stats.totalGoalsSaved.toLocaleString('ru-RU')} ₽ из {stats.totalGoalsTarget.toLocaleString('ru-RU')} ₽
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
+          </>
         )}
 
         {/* ================= TAB 2: SAVINGS GOALS (ЦЕЛИ НАКОПЛЕНИЙ) ================= */}
@@ -2898,6 +3839,168 @@ export const FinanceManagerView: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Sheet: Настройка отображения (Что скрыть/показать) */}
+      {isDisplaySettingsOpen && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in">
+          <div className="w-full sm:max-w-md bg-[#161722] border border-white/[0.12] rounded-t-3xl sm:rounded-2xl p-5 space-y-4 shadow-2xl animate-slide-up max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-[#7c5cff]/20 text-[#7c5cff]">
+                  <SlidersHorizontal size={18} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Настройка отображения</h3>
+                  <p className="text-[11px] text-[#94a3b8]">Выберите, какие блоки скрыть или показать</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsDisplaySettingsOpen(false)}
+                className="p-1.5 rounded-xl text-[#94a3b8] hover:text-white hover:bg-white/[0.08] transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* List of toggles */}
+            <div className="space-y-2.5">
+              {/* Toggle 1: Карточка баланса */}
+              <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                <div className="space-y-0.5">
+                  <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <IconWalletCapital size={14} color="#10b981" />
+                    <span>Карточка баланса сверху</span>
+                  </div>
+                  <div className="text-[10px] text-[#94a3b8]">Большой блок сальдо и доходов/расходов</div>
+                </div>
+                <button
+                  onClick={toggleMobileHero}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    isMobileHeroVisible
+                      ? 'bg-[#10b981]/20 text-[#10b981] border border-[#10b981]/40'
+                      : 'bg-white/[0.08] text-[#94a3b8] border border-white/[0.1]'
+                  }`}
+                >
+                  {isMobileHeroVisible ? 'Показано' : 'Скрыто'}
+                </button>
+              </div>
+
+              {/* Toggle 2: Кнопки быстрых действий */}
+              <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                <div className="space-y-0.5">
+                  <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <Sparkles size={14} className="text-[#f59e0b]" />
+                    <span>Кнопки быстрых действий</span>
+                  </div>
+                  <div className="text-[10px] text-[#94a3b8]">Кнопки «+Доход», «-Расход», «Цель», «Вклад»</div>
+                </div>
+                <button
+                  onClick={toggleMobileActions}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    isMobileActionsVisible
+                      ? 'bg-[#10b981]/20 text-[#10b981] border border-[#10b981]/40'
+                      : 'bg-white/[0.08] text-[#94a3b8] border border-white/[0.1]'
+                  }`}
+                >
+                  {isMobileActionsVisible ? 'Показано' : 'Скрыто'}
+                </button>
+              </div>
+
+              {/* Toggle 3: Смены и календарь */}
+              <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                <div className="space-y-0.5">
+                  <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <Calendar size={14} className="text-[#38bdf8]" />
+                    <span>Блок смен из Календаря</span>
+                  </div>
+                  <div className="text-[10px] text-[#94a3b8]">Сводка рабочих часов и заработка со смен</div>
+                </div>
+                <button
+                  onClick={toggleShiftsBlock}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    isShiftsBlockVisible
+                      ? 'bg-[#10b981]/20 text-[#10b981] border border-[#10b981]/40'
+                      : 'bg-white/[0.08] text-[#94a3b8] border border-white/[0.1]'
+                  }`}
+                >
+                  {isShiftsBlockVisible ? 'Показано' : 'Скрыто'}
+                </button>
+              </div>
+
+              {/* Toggle 4: Режим приватности (Скрыть суммы) */}
+              <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                <div className="space-y-0.5">
+                  <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <EyeOff size={14} className="text-[#f43f5e]" />
+                    <span>Скрыть суммы (Режим инкогнито)</span>
+                  </div>
+                  <div className="text-[10px] text-[#94a3b8]">Заменять числа баланса точками ••••••</div>
+                </div>
+                <button
+                  onClick={togglePrivacyMode}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    isPrivacyMode
+                      ? 'bg-[#f59e0b]/20 text-[#f59e0b] border border-[#f59e0b]/40'
+                      : 'bg-white/[0.08] text-[#94a3b8] border border-white/[0.1]'
+                  }`}
+                >
+                  {isPrivacyMode ? 'Включен' : 'Выключен'}
+                </button>
+              </div>
+
+              {/* Toggle 5: Скрыть пустые категории */}
+              <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                <div className="space-y-0.5">
+                  <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <PieChart size={14} className="text-[#ec4899]" />
+                    <span>Скрыть пустые категории</span>
+                  </div>
+                  <div className="text-[10px] text-[#94a3b8]">Не показывать категории без расходов</div>
+                </div>
+                <button
+                  onClick={toggleHideEmptyCategories}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    isHideEmptyCategories
+                      ? 'bg-[#10b981]/20 text-[#10b981] border border-[#10b981]/40'
+                      : 'bg-white/[0.08] text-[#94a3b8] border border-white/[0.1]'
+                  }`}
+                >
+                  {isHideEmptyCategories ? 'Скрывать' : 'Показывать'}
+                </button>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-2 pt-2 border-t border-white/[0.08]">
+              <button
+                onClick={() => {
+                  setIsMobileHeroVisible(true);
+                  setIsMobileActionsVisible(true);
+                  setIsShiftsBlockVisible(true);
+                  setIsHideEmptyCategories(false);
+                  setIsPrivacyMode(false);
+                  localStorage.removeItem('finance_hero_visible');
+                  localStorage.removeItem('finance_actions_visible');
+                  localStorage.removeItem('finance_shifts_visible');
+                  localStorage.removeItem('finance_hide_empty_cats');
+                  localStorage.removeItem('finance_privacy_mode');
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-xs font-bold text-[#94a3b8] hover:text-white transition-colors flex items-center justify-center gap-1.5"
+              >
+                <RotateCcw size={13} />
+                <span>Сбросить всё</span>
+              </button>
+              <button
+                onClick={() => setIsDisplaySettingsOpen(false)}
+                className="flex-1 py-2.5 rounded-xl bg-[#7c5cff] hover:bg-[#7c5cff]/90 text-xs font-bold text-white transition-all shadow-lg shadow-purple-500/20 active:scale-95"
+              >
+                Готово
+              </button>
+            </div>
           </div>
         </div>
       )}

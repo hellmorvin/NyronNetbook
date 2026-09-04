@@ -247,15 +247,6 @@ export const UserManualGuideModal: React.FC = () => {
                     </p>
                   </div>
 
-                  <div className="p-3.5 bg-[#171822] rounded-2xl border border-white/[0.08] space-y-1">
-                    <span className="font-bold text-[#f59e0b] block flex items-center gap-1.5">
-                      <Target size={14} />
-                      <span>Режим «Паук» (Spider Focus):</span>
-                    </span>
-                    <p className="text-[#94a3b8] text-[11px]">
-                      Кнопка «Паук» в тулбаре изолирует только выбранный узел и его непосредственных соседей, убирая визуальный шум большой базы.
-                    </p>
-                  </div>
 
                   <div className="p-3.5 bg-[#171822] rounded-2xl border border-white/[0.08] space-y-1">
                     <span className="font-bold text-[#10b981] block flex items-center gap-1.5">

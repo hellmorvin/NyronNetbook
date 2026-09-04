@@ -8,6 +8,7 @@ import {
   BookOpen,
   X,
   Share2,
+  BarChart2,
 } from 'lucide-react';
 import { useBrainStore } from '../../store/useBrainStore';
 
@@ -28,6 +29,16 @@ export const MobileMoreSheet: React.FC<MobileMoreSheetProps> = ({ isOpen, onClos
   if (!isOpen) return null;
 
   const actions = [
+    {
+      id: 'analytics',
+      title: 'Аналитика и Метрики',
+      desc: 'Когнитивная плотность графа, статистика мыслей, финансы и смены',
+      icon: <BarChart2 size={22} className="text-[#38bdf8]" />,
+      onClick: () => {
+        openTab({ type: 'analytics', title: 'Аналитика' });
+        onClose();
+      },
+    },
     {
       id: 'notebooklm',
       title: 'Google NotebookLM AI Hub',

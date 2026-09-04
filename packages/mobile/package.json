@@ -17,8 +17,8 @@
   "dependencies": {
     "@axon/shared": "*",
     "@capacitor/android": "^7.0.1",
-    "@capacitor/ios": "^7.0.1",
     "@capacitor/core": "^7.0.1",
+    "@capacitor/ios": "^7.6.9",
     "@react-three/drei": "^9.121.4",
     "@react-three/fiber": "^8.17.14",
     "canvas-confetti": "^1.9.4",

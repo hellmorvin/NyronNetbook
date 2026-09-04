@@ -11,13 +11,14 @@ import {
   createMerkleRoot,
   computeHash,
 } from '@axon/shared';
+export type { Neuron, LearningState };
 import { INITIAL_NEURONS } from './defaultVaultData';
 
 export type RibbonView = 'explorer' | 'search' | 'bookmarks' | 'database' | 'ai' | 'sync' | 'calendar' | 'finance';
 
 export interface TabItem {
   id: string;
-  type: 'graph' | 'note' | 'canvas' | 'database' | 'calendar' | 'finance';
+  type: 'graph' | 'note' | 'canvas' | 'database' | 'calendar' | 'finance' | 'analytics' | 'notes';
   noteId?: string;
   title: string;
   isDirty?: boolean;
@@ -493,7 +494,6 @@ interface BrainState {
   activeNeuronId: string | null;
   hoveredNeuronId: string | null;
   selectedTag: string | null;
-  spiderMode: boolean;
   
   // Sidebars visibility
   isLeftSidebarOpen: boolean;
@@ -562,7 +562,6 @@ interface BrainState {
   openNote: (id: string) => void;
   setHoveredNeuron: (id: string | null) => void;
   setSelectedTag: (tag: string | null) => void;
-  toggleSpiderMode: () => void;
   
   setSearchOpen: (open: boolean) => void;
   setSettingsOpen: (open: boolean) => void;
@@ -602,11 +601,19 @@ interface BrainState {
   addCanvasCard: (card: Omit<CanvasCard, 'id'>) => CanvasCard;
   addCanvasSticker: (text?: string, color?: string, x?: number, y?: number) => CanvasCard;
   clearCanvas: () => void;
+  clearCanvasConnections: () => void;
+  cleanupCanvasClutter: () => { removedCards: number; removedConnections: number };
   updateCanvasCard: (id: string, updates: Partial<CanvasCard>) => void;
   deleteCanvasCard: (id: string) => void;
   addCanvasConnection: (conn: Omit<CanvasConnection, 'id'>) => void;
   deleteCanvasConnection: (id: string) => void;
   autoLayoutCanvas: () => void;
+  syncCanvasConnectionsToGraph: () => number;
+  syncCanvasToGraph: () => { createdCardsCount: number; createdConnectionsCount: number };
+  loadGraphOntoCanvas: () => { cardsCount: number; connectionsCount: number };
+  openNodeConnectionsOnCanvas: (nodeId: string) => { cardsCount: number; connectionsCount: number };
+  connectNeuronsDirectly: (sourceId: string, targetId: string) => boolean;
+  disconnectNeuronsDirectly: (sourceId: string, targetId: string) => boolean;
 
   // Shift & Calendar Actions
   addOrUpdateShift: (shift: Omit<WorkShift, 'id' | 'earnings'> & { id?: string }) => void;
@@ -653,6 +660,7 @@ interface BrainState {
   // Sync & Export
   applySyncDelta: (delta: SyncDelta) => void;
   loadVault: (neurons: Neuron[]) => void;
+  loadVaultFullState: (data: any) => void;
   exportVaultJSON: () => string;
 }
 
@@ -663,17 +671,17 @@ export function resolveGraphConnections(neurons: Neuron[]): Neuron[] {
   });
 
   return neurons.map((n) => {
-    const outlinks: string[] = [];
+    const outlinkSet = new Set<string>(n.outlinks || []);
     (n.wikiLinks || []).forEach((linkTitle) => {
       const targetId = titleToIdMap.get(linkTitle.toLowerCase().trim());
-      if (targetId && targetId !== n.id && !outlinks.includes(targetId)) {
-        outlinks.push(targetId);
+      if (targetId && targetId !== n.id) {
+        outlinkSet.add(targetId);
       }
     });
 
     return {
       ...n,
-      outlinks,
+      outlinks: Array.from(outlinkSet),
     };
   }).map((n, _, all) => {
     const backlinks: string[] = [];
@@ -748,7 +756,6 @@ export const useBrainStore = create<BrainState>()(
       activeNeuronId: initialWithLinks[0]?.id || null,
       hoveredNeuronId: null,
       selectedTag: null,
-      spiderMode: false,
       
       isLeftSidebarOpen: true,
       isRightSidebarOpen: true,
@@ -976,7 +983,6 @@ export const useBrainStore = create<BrainState>()(
 
       setHoveredNeuron: (id) => set({ hoveredNeuronId: id }),
       setSelectedTag: (tag) => set({ selectedTag: tag }),
-      toggleSpiderMode: () => set((s) => ({ spiderMode: !s.spiderMode })),
 
       setSearchOpen: (open) => set({ isSearchOpen: open }),
       setSettingsOpen: (open) => set({ isSettingsOpen: open }),
@@ -1300,6 +1306,51 @@ export const useBrainStore = create<BrainState>()(
         set({ canvasCards: [], canvasConnections: [] });
       },
 
+      clearCanvasConnections: () => {
+        set({ canvasConnections: [] });
+      },
+
+      cleanupCanvasClutter: () => {
+        const state = get();
+        const connectedCardIds = new Set<string>();
+        state.canvasConnections.forEach((conn) => {
+          connectedCardIds.add(conn.fromNode);
+          connectedCardIds.add(conn.toNode);
+        });
+
+        const cardsToKeep: CanvasCard[] = [];
+        let removedCards = 0;
+
+        state.canvasCards.forEach((card) => {
+          const hasContent =
+            (card.content && card.content.trim().length > 0) ||
+            (card.title &&
+              card.title.trim().length > 0 &&
+              card.title !== 'Мысль' &&
+              card.title !== 'Стикер');
+          const isConnected = connectedCardIds.has(card.id);
+          if (hasContent || isConnected) {
+            cardsToKeep.push(card);
+          } else {
+            removedCards++;
+          }
+        });
+
+        const validIds = new Set(cardsToKeep.map((c) => c.id));
+        const cleanConnections = state.canvasConnections.filter(
+          (c) => validIds.has(c.fromNode) && validIds.has(c.toNode)
+        );
+        const removedConnections =
+          state.canvasConnections.length - cleanConnections.length;
+
+        set({
+          canvasCards: cardsToKeep,
+          canvasConnections: cleanConnections,
+        });
+
+        return { removedCards, removedConnections };
+      },
+
       updateCanvasCard: (id, updates) => {
         set((state) => ({
           canvasCards: state.canvasCards.map((c) =>
@@ -1353,6 +1404,373 @@ export const useBrainStore = create<BrainState>()(
         });
 
         set({ canvasCards: layouted });
+      },
+
+      syncCanvasConnectionsToGraph: () => {
+        const { canvasCards, canvasConnections, updateNeuron, addNeuron } = get();
+        if (canvasConnections.length === 0) return 0;
+
+        let syncedCount = 0;
+        const currentCards = [...canvasCards];
+        let cardUpdated = false;
+
+        canvasConnections.forEach((conn) => {
+          const fromCardIndex = currentCards.findIndex((c) => c.id === conn.fromNode);
+          const toCardIndex = currentCards.findIndex((c) => c.id === conn.toNode);
+          if (fromCardIndex === -1 || toCardIndex === -1) return;
+
+          const fromCard = currentCards[fromCardIndex]!;
+          const toCard = currentCards[toCardIndex]!;
+
+          // Ensure source note exists
+          let sourceNeuron = fromCard.noteId ? get().neurons.find((n) => n.id === fromCard.noteId) : undefined;
+          if (!sourceNeuron) {
+            sourceNeuron = get().neurons.find((n) => n.title.trim().toLowerCase() === (fromCard.title || '').trim().toLowerCase());
+          }
+          if (!sourceNeuron) {
+            sourceNeuron = addNeuron(fromCard.title || 'Карточка холста', fromCard.content || '');
+            currentCards[fromCardIndex] = { ...fromCard, noteId: sourceNeuron.id };
+            cardUpdated = true;
+          } else if (!fromCard.noteId) {
+            currentCards[fromCardIndex] = { ...fromCard, noteId: sourceNeuron.id };
+            cardUpdated = true;
+          }
+
+          // Ensure target note exists
+          let targetNeuron = toCard.noteId ? get().neurons.find((n) => n.id === toCard.noteId) : undefined;
+          if (!targetNeuron) {
+            targetNeuron = get().neurons.find((n) => n.title.trim().toLowerCase() === (toCard.title || '').trim().toLowerCase());
+          }
+          if (!targetNeuron) {
+            targetNeuron = addNeuron(toCard.title || 'Карточка холста', toCard.content || '');
+            currentCards[toCardIndex] = { ...toCard, noteId: targetNeuron.id };
+            cardUpdated = true;
+          } else if (!toCard.noteId) {
+            currentCards[toCardIndex] = { ...toCard, noteId: targetNeuron.id };
+            cardUpdated = true;
+          }
+
+          if (sourceNeuron.id === targetNeuron.id) return;
+
+          // Now create synaptic connection
+          const targetTitle = targetNeuron.title;
+          const hasWikiLink = (sourceNeuron.wikiLinks || []).some(
+            (t) => t.trim().toLowerCase() === targetTitle.trim().toLowerCase()
+          );
+          const hasOutlink = (sourceNeuron.outlinks || []).includes(targetNeuron.id);
+
+          if (!hasWikiLink || !hasOutlink) {
+            const linkTag = `[[${targetTitle}]]`;
+            let newContent = sourceNeuron.content;
+            if (!newContent.includes(linkTag)) {
+              newContent = newContent.trim()
+                ? `${newContent}\n\nСвязь из холста: ${linkTag}`
+                : linkTag;
+            }
+            const updatedOutlinks = Array.from(new Set([...(sourceNeuron.outlinks || []), targetNeuron.id]));
+            updateNeuron(sourceNeuron.id, {
+              content: newContent,
+              outlinks: updatedOutlinks,
+            });
+            syncedCount++;
+          }
+        });
+
+        if (cardUpdated) {
+          set({ canvasCards: currentCards });
+        }
+
+        const updatedNeurons = resolveGraphConnections(get().neurons);
+        set({ neurons: updatedNeurons });
+        get().searchEngine.indexAll(updatedNeurons);
+
+        return syncedCount;
+      },
+
+      syncCanvasToGraph: () => {
+        const { canvasCards, canvasConnections, updateNeuron, addNeuron } = get();
+        if (canvasCards.length === 0 && canvasConnections.length === 0) {
+          return { createdCardsCount: 0, createdConnectionsCount: 0 };
+        }
+
+        let createdCardsCount = 0;
+        let createdConnectionsCount = 0;
+        const currentCards = [...canvasCards];
+        let cardUpdated = false;
+
+        // 1. Ensure all canvas cards exist as neurons in knowledge graph
+        currentCards.forEach((card, idx) => {
+          let neuron = card.noteId ? get().neurons.find((n) => n.id === card.noteId) : undefined;
+          if (!neuron) {
+            neuron = get().neurons.find(
+              (n) => n.title.trim().toLowerCase() === (card.title || '').trim().toLowerCase()
+            );
+          }
+          if (!neuron) {
+            const cardTitle = (card.title || '').trim() || 'Мысль с холста';
+            const cardContent = card.content ? `${card.content}\n\n> [!note] Импортировано с интерактивного холста` : '> [!note] Импортировано с интерактивного холста';
+            neuron = addNeuron(cardTitle, cardContent, 'Холст');
+            currentCards[idx] = { ...card, noteId: neuron.id };
+            cardUpdated = true;
+            createdCardsCount++;
+          } else if (!card.noteId) {
+            currentCards[idx] = { ...card, noteId: neuron.id };
+            cardUpdated = true;
+          }
+        });
+
+        if (cardUpdated) {
+          set({ canvasCards: currentCards });
+        }
+
+        // 2. Ensure all canvas connections exist as synaptic links
+        canvasConnections.forEach((conn) => {
+          const fromCard = currentCards.find((c) => c.id === conn.fromNode);
+          const toCard = currentCards.find((c) => c.id === conn.toNode);
+          if (!fromCard || !toCard) return;
+
+          const sourceNeuron = get().neurons.find((n) => n.id === fromCard.noteId);
+          const targetNeuron = get().neurons.find((n) => n.id === toCard.noteId);
+          if (!sourceNeuron || !targetNeuron || sourceNeuron.id === targetNeuron.id) return;
+
+          const targetTitle = targetNeuron.title;
+          const hasWikiLink = (sourceNeuron.wikiLinks || []).some(
+            (t) => t.trim().toLowerCase() === targetTitle.trim().toLowerCase()
+          );
+          const hasOutlink = (sourceNeuron.outlinks || []).includes(targetNeuron.id);
+
+          if (!hasWikiLink || !hasOutlink) {
+            const linkTag = `[[${targetTitle}]]`;
+            let newContent = sourceNeuron.content;
+            if (!newContent.includes(linkTag)) {
+              newContent = newContent.trim()
+                ? `${newContent}\n\nСвязь из холста: ${linkTag}`
+                : linkTag;
+            }
+            const updatedOutlinks = Array.from(new Set([...(sourceNeuron.outlinks || []), targetNeuron.id]));
+            updateNeuron(sourceNeuron.id, {
+              content: newContent,
+              outlinks: updatedOutlinks,
+            });
+            createdConnectionsCount++;
+          }
+        });
+
+        const updatedNeurons = resolveGraphConnections(get().neurons);
+        set({ neurons: updatedNeurons });
+        get().searchEngine.indexAll(updatedNeurons);
+
+        return { createdCardsCount, createdConnectionsCount };
+      },
+
+      loadGraphOntoCanvas: () => {
+        const { neurons } = get();
+        if (neurons.length === 0) return { cardsCount: 0, connectionsCount: 0 };
+
+        const cols = Math.max(2, Math.ceil(Math.sqrt(neurons.length)));
+        const colSpacing = 280;
+        const rowSpacing = 180;
+        const colors = ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#f43f5e', '#64748b'];
+
+        const cards: CanvasCard[] = neurons.map((n, idx) => {
+          const col = idx % cols;
+          const row = Math.floor(idx / cols);
+          const color = colors[idx % colors.length] || '#8b5cf6';
+
+          return {
+            id: `card_${n.id}`,
+            noteId: n.id,
+            type: 'note',
+            title: n.title,
+            content: n.content.replace(/---[\s\S]*?---/g, '').replace(/#+\s+/g, '').slice(0, 180).trim(),
+            x: 80 + col * colSpacing + (row % 2 === 1 ? 30 : 0),
+            y: 80 + row * rowSpacing,
+            width: 220,
+            height: 120,
+            color,
+          };
+        });
+
+        const cardMap = new Map(neurons.map((n) => [n.id, `card_${n.id}`]));
+        const connections: CanvasConnection[] = [];
+        const existingPairs = new Set<string>();
+
+        neurons.forEach((source) => {
+          const fromId = cardMap.get(source.id);
+          if (!fromId) return;
+
+          (source.outlinks || []).forEach((targetId) => {
+            const toId = cardMap.get(targetId);
+            if (!toId || fromId === toId) return;
+
+            const pairKey = `${fromId}->${toId}`;
+            if (!existingPairs.has(pairKey)) {
+              existingPairs.add(pairKey);
+              connections.push({
+                id: `conn_${source.id}_${targetId}`,
+                fromNode: fromId,
+                toNode: toId,
+                color: '#8b5cf6',
+              });
+            }
+          });
+        });
+
+        set({
+          canvasCards: cards,
+          canvasConnections: connections,
+        });
+
+        return { cardsCount: cards.length, connectionsCount: connections.length };
+      },
+
+      openNodeConnectionsOnCanvas: (nodeId: string) => {
+        const { neurons } = get();
+        const mainNode = neurons.find((n) => n.id === nodeId);
+        if (!mainNode) return { cardsCount: 0, connectionsCount: 0 };
+
+        // Collect all directly connected neighbors (both outlinks and backlinks)
+        const neighborIds = new Set<string>([...(mainNode.outlinks || []), ...(mainNode.backlinks || [])]);
+        const neighborNodes = neurons.filter((n) => neighborIds.has(n.id) && n.id !== mainNode.id);
+
+        const currentCards = [...get().canvasCards];
+        const currentConnections = [...get().canvasConnections];
+
+        // Ensure main card exists or create it at center
+        const centerX = 360;
+        const centerY = 260;
+
+        let mainCard = currentCards.find((c) => c.noteId === mainNode.id);
+        if (!mainCard) {
+          mainCard = {
+            id: `card_${mainNode.id}`,
+            x: centerX,
+            y: centerY,
+            width: 230,
+            height: 140,
+            type: 'note',
+            noteId: mainNode.id,
+            title: mainNode.title,
+            content: mainNode.content?.slice(0, 180) || '',
+            color: '#8b5cf6',
+          };
+          currentCards.push(mainCard);
+        } else {
+          mainCard.x = centerX;
+          mainCard.y = centerY;
+        }
+
+        // Arrange neighbors radially around the main node
+        const totalNeighbors = neighborNodes.length;
+        const radius = Math.max(260, totalNeighbors * 45);
+        const angleStep = totalNeighbors > 0 ? (2 * Math.PI) / totalNeighbors : 0;
+
+        neighborNodes.forEach((neighbor, idx) => {
+          const angle = idx * angleStep - Math.PI / 2;
+          const nx = Math.round(centerX + radius * Math.cos(angle));
+          const ny = Math.round(centerY + radius * Math.sin(angle));
+
+          let card = currentCards.find((c) => c.noteId === neighbor.id);
+          if (!card) {
+            const colors = ['#06b6d4', '#10b981', '#f59e0b', '#f43f5e', '#a855f7'];
+            card = {
+              id: `card_${neighbor.id}`,
+              x: nx,
+              y: ny,
+              width: 210,
+              height: 130,
+              type: 'note',
+              noteId: neighbor.id,
+              title: neighbor.title,
+              content: neighbor.content?.slice(0, 140) || '',
+              color: colors[idx % colors.length],
+            };
+            currentCards.push(card);
+          } else {
+            card.x = nx;
+            card.y = ny;
+          }
+
+          // Connect with arrow
+          const isOutlink = (mainNode.outlinks || []).includes(neighbor.id);
+          const fromCardId = isOutlink ? mainCard!.id : card.id;
+          const toCardId = isOutlink ? card.id : mainCard!.id;
+
+          const existingConn = currentConnections.find(
+            (c) =>
+              (c.fromNode === fromCardId && c.toNode === toCardId) ||
+              (c.fromNode === toCardId && c.toNode === fromCardId)
+          );
+          if (!existingConn) {
+            currentConnections.push({
+              id: `conn_${fromCardId}_${toCardId}`,
+              fromNode: fromCardId,
+              toNode: toCardId,
+              color: isOutlink ? '#8b5cf6' : '#06b6d4',
+              label: isOutlink ? 'Связь' : 'Обратная',
+            });
+          }
+        });
+
+        set({
+          canvasCards: currentCards,
+          canvasConnections: currentConnections,
+        });
+
+        return {
+          cardsCount: 1 + neighborNodes.length,
+          connectionsCount: neighborNodes.length,
+        };
+      },
+
+      connectNeuronsDirectly: (sourceId: string, targetId: string) => {
+        const source = get().neurons.find((n) => n.id === sourceId);
+        const target = get().neurons.find((n) => n.id === targetId);
+        if (!source || !target || source.id === target.id) return false;
+
+        const targetTitle = target.title;
+        const linkTag = `[[${targetTitle}]]`;
+        let newContent = source.content;
+        if (!newContent.includes(linkTag)) {
+          newContent = newContent.trim()
+            ? `${newContent}\n\nСвязано с: ${linkTag}`
+            : linkTag;
+        }
+        const updatedOutlinks = Array.from(new Set([...(source.outlinks || []), target.id]));
+        get().updateNeuron(source.id, {
+          content: newContent,
+          outlinks: updatedOutlinks,
+        });
+
+        const updatedNeurons = resolveGraphConnections(get().neurons);
+        set({ neurons: updatedNeurons });
+        get().searchEngine.indexAll(updatedNeurons);
+        return true;
+      },
+
+      disconnectNeuronsDirectly: (sourceId: string, targetId: string) => {
+        const source = get().neurons.find((n) => n.id === sourceId);
+        const target = get().neurons.find((n) => n.id === targetId);
+        if (!source || !target) return false;
+
+        const escapedTargetTitle = target.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`\\[\\[${escapedTargetTitle}\\]\\]`, 'gi');
+        const newContent = source.content
+          .replace(regex, '')
+          .replace(/Связано с:\s*$/gm, '')
+          .replace(/Связь из холста:\s*$/gm, '')
+          .replace(/\n\s*\n\s*\n/g, '\n\n')
+          .trim();
+        const updatedOutlinks = (source.outlinks || []).filter((id) => id !== target.id);
+        get().updateNeuron(source.id, {
+          content: newContent,
+          outlinks: updatedOutlinks,
+        });
+
+        const updatedNeurons = resolveGraphConnections(get().neurons);
+        set({ neurons: updatedNeurons });
+        get().searchEngine.indexAll(updatedNeurons);
+        return true;
       },
 
       // Shifts Actions
@@ -1695,6 +2113,30 @@ export const useBrainStore = create<BrainState>()(
         });
       },
 
+      loadVaultFullState: (data: any) => {
+        if (!data || typeof data !== 'object') return;
+        const updates: Partial<BrainState> = {};
+        if (Array.isArray(data.neurons)) {
+          const resolved = resolveGraphConnections(data.neurons);
+          get().searchEngine.indexAll(resolved);
+          updates.neurons = resolved;
+          updates.activeNeuronId = resolved[0]?.id || null;
+        }
+        if (Array.isArray(data.folders)) updates.folders = data.folders;
+        if (Array.isArray(data.canvasCards)) updates.canvasCards = data.canvasCards;
+        if (Array.isArray(data.canvasConnections)) updates.canvasConnections = data.canvasConnections;
+        if (Array.isArray(data.shifts)) updates.shifts = data.shifts;
+        if (data.shiftSettings) updates.shiftSettings = { ...get().shiftSettings, ...data.shiftSettings };
+        if (Array.isArray(data.calendarEvents)) updates.calendarEvents = data.calendarEvents;
+        if (Array.isArray(data.transactions)) updates.transactions = data.transactions;
+        if (typeof data.monthlyBudgetLimit === 'number') updates.monthlyBudgetLimit = data.monthlyBudgetLimit;
+        if (Array.isArray(data.savingsGoals)) updates.savingsGoals = data.savingsGoals;
+        if (Array.isArray(data.bankDeposits)) updates.bankDeposits = data.bankDeposits;
+        if (data.vaultName) updates.vaultName = data.vaultName;
+        set(updates);
+      },
+
+
       exportVaultJSON: () => {
         const data = {
           version: '1.2.0',
@@ -1739,7 +2181,6 @@ export const useBrainStore = create<BrainState>()(
         themeMode: state.themeMode,
         uiSettings: state.uiSettings,
         autoLoadCalendarShifts: state.autoLoadCalendarShifts,
-        spiderMode: state.spiderMode,
         graphSettings: state.graphSettings,
         aiSettings: state.aiSettings,
         canvasCards: state.canvasCards,

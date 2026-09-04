@@ -9,7 +9,7 @@ import {
   IconWalletCapital,
   IconExcelTable,
 } from '../icons/CustomNeironoIcons';
-import { LayoutGrid, Calendar } from 'lucide-react';
+import { LayoutGrid, Calendar, BarChart3 } from 'lucide-react';
 import { useBrainStore, RibbonView } from '../../store/useBrainStore';
 import { NeuralNotebookLogo } from '../brand/NeuralNotebookLogo';
 
@@ -158,6 +158,19 @@ export const ActivityRibbon: React.FC = () => {
           title="Таблицы и базы данных"
         >
           <IconExcelTable size={20} color={activeTab?.type === 'database' ? '#f59e0b' : 'currentColor'} />
+        </button>
+
+        {/* 9. Analytics & Neural Statistics */}
+        <button
+          onClick={() => openTab({ type: 'analytics', title: 'Аналитика' })}
+          className={`p-3 rounded-2xl transition-all relative ${
+            activeTab?.type === 'analytics'
+              ? 'bg-[#38bdf8]/20 text-[#38bdf8] border border-[#38bdf8]/40 shadow-md'
+              : 'text-[#94a3b8] hover:text-white hover:bg-white/[0.08]'
+          }`}
+          title="Аналитика и статистика хранилища"
+        >
+          <BarChart3 size={20} className={activeTab?.type === 'analytics' ? 'text-[#38bdf8]' : 'currentColor'} />
         </button>
       </div>
 

@@ -198,12 +198,38 @@ function prepareInitialHTML(content: string): string {
         flushTable();
       }
 
+      // Headings
+      if (line.startsWith('# ')) {
+        processedLines.push(`<h1 style="font-size: 22px; font-weight: 800; color: #ffffff; margin: 16px 0 8px 0; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px;">${line.slice(2)}</h1>`);
+        continue;
+      }
+      if (line.startsWith('## ')) {
+        processedLines.push(`<h2 style="font-size: 18px; font-weight: 700; color: #a78bfa; margin: 12px 0 6px 0;">${line.slice(3)}</h2>`);
+        continue;
+      }
+      if (line.startsWith('### ')) {
+        processedLines.push(`<h3 style="font-size: 15px; font-weight: 600; color: #38bdf8; margin: 8px 0 4px 0;">${line.slice(4)}</h3>`);
+        continue;
+      }
+
+      // Blockquote
+      if (line.startsWith('> ')) {
+        processedLines.push(`<blockquote style="border-left: 3px solid #7c5cff; padding-left: 12px; margin: 8px 0; color: #cbd5e1; font-style: italic;">${line.slice(2)}</blockquote>`);
+        continue;
+      }
+
+      // Horizontal Rule
+      if (line.trim() === '---' || line.trim() === '***') {
+        processedLines.push('<hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 16px 0;" />');
+        continue;
+      }
+
       // Tasks
       if (line.startsWith('- [ ] ') || line.startsWith('- [x] ')) {
         const isChecked = line.startsWith('- [x] ');
         const taskText = line.slice(6);
         processedLines.push(
-          `<div class="visual-task-item" style="display: flex; align-items: center; gap: 8px; margin: 4px 0;"><input type="checkbox" contenteditable="false" ${isChecked ? 'checked' : ''} style="cursor: pointer; width: 18px; height: 18px; accent-color: #7c5cff; margin: 0;" /><div contenteditable="true" style="flex: 1; outline: none;">${taskText}</div></div>`
+          `<div class="visual-task-item" style="display: flex; align-items: center; gap: 8px; margin: 4px 0;"><input type="checkbox" contenteditable="false" ${isChecked ? 'checked' : ''} style="cursor: pointer; width: 18px; height: 18px; accent-color: #7c5cff; margin: 0;" /><div contenteditable="true" style="flex: 1; outline: none; ${isChecked ? 'text-decoration: line-through; color: #64748b;' : ''}">${taskText}</div></div>`
         );
         continue;
       }
@@ -226,7 +252,10 @@ function prepareInitialHTML(content: string): string {
       } else {
         let pl = line
           .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
-          .replace(/\*([^*]+)\*/g, '<i>$1</i>');
+          .replace(/\*([^*]+)\*/g, '<i>$1</i>')
+          .replace(/~~([^~]+)~~/g, '<s>$1</s>')
+          .replace(/==([^=]+)==/g, '<mark style="background: rgba(254, 240, 138, 0.25); color: #fef08a; padding: 1px 4px; border-radius: 4px;">$1</mark>')
+          .replace(/\[\[(.*?)\]\]/g, '<span class="wikilink-node" data-link="$1" style="background: rgba(124, 92, 255, 0.2); color: #a78bfa; font-weight: bold; border-radius: 4px; padding: 1px 6px; text-decoration: underline; cursor: pointer;">[[$1]]</span>');
         processedLines.push(`<p style="margin: 6px 0; line-height: 1.6;">${pl}</p>`);
       }
     }
@@ -261,6 +290,39 @@ export const RichWordEditor: React.FC<RichWordEditorProps> = ({
 
   // Inline Math Suggestion State
   const [inlineMathSuggestion, setInlineMathSuggestion] = useState<{ expr: string; result: number } | null>(null);
+  const [isRibbonExpanded, setIsRibbonExpanded] = useState(true);
+
+  // Saved Selection Range for rock-solid mobile touch formatting without caret jumps
+  const savedRangeRef = useRef<Range | null>(null);
+
+  const saveCurrentSelection = useCallback(() => {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0 && editorRef.current && sel.anchorNode && editorRef.current.contains(sel.anchorNode)) {
+      savedRangeRef.current = sel.getRangeAt(0).cloneRange();
+    }
+  }, []);
+
+  const restoreSelection = useCallback(() => {
+    if (savedRangeRef.current && editorRef.current) {
+      editorRef.current.focus();
+      const sel = window.getSelection();
+      if (sel) {
+        sel.removeAllRanges();
+        sel.addRange(savedRangeRef.current);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleSel = () => {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0 && editorRef.current && sel.anchorNode && editorRef.current.contains(sel.anchorNode)) {
+        savedRangeRef.current = sel.getRangeAt(0).cloneRange();
+      }
+    };
+    document.addEventListener('selectionchange', handleSel);
+    return () => document.removeEventListener('selectionchange', handleSel);
+  }, []);
 
   // Initialize editor content ONLY ONCE per noteId
   useEffect(() => {
@@ -594,15 +656,37 @@ export const RichWordEditor: React.FC<RichWordEditorProps> = ({
         document.execCommand('removeFormat', false);
         handleEditorInput();
       },
+      onHeading: (level: 1 | 2 | 3) => {
+        restoreSelection();
+        const sel = window.getSelection();
+        if (sel && sel.anchorNode) {
+          let node = sel.anchorNode.nodeType === 3 ? sel.anchorNode.parentElement : (sel.anchorNode as HTMLElement);
+          let heading = node?.closest<HTMLElement>('h1, h2, h3');
+          if (heading && heading.tagName.toLowerCase() === `h${level}`) {
+            document.execCommand('formatBlock', false, '<p>');
+          } else {
+            document.execCommand('formatBlock', false, `<h${level}>`);
+          }
+        } else {
+          document.execCommand('formatBlock', false, `<h${level}>`);
+        }
+        saveCurrentSelection();
+        handleEditorInput();
+      },
       onBold: () => {
+        restoreSelection();
         document.execCommand('bold', false);
+        saveCurrentSelection();
         handleEditorInput();
       },
       onItalic: () => {
+        restoreSelection();
         document.execCommand('italic', false);
+        saveCurrentSelection();
         handleEditorInput();
       },
       onUnderline: () => {
+        restoreSelection();
         const sel = window.getSelection();
         if (sel && sel.anchorNode) {
           let node = sel.anchorNode.nodeType === 3 ? sel.anchorNode.parentElement : (sel.anchorNode as HTMLElement);
@@ -618,16 +702,20 @@ export const RichWordEditor: React.FC<RichWordEditorProps> = ({
                 while (u.firstChild) p?.insertBefore(u.firstChild, u);
                 u.remove();
               });
+              saveCurrentSelection();
               handleEditorInput();
               return;
             }
           }
         }
         document.execCommand('underline', false);
+        saveCurrentSelection();
         handleEditorInput();
       },
       onStrikethrough: () => {
+        restoreSelection();
         document.execCommand('strikeThrough', false);
+        saveCurrentSelection();
         handleEditorInput();
       },
       onHighlight: (color: string, autoTextColor?: string) => {
@@ -814,8 +902,17 @@ export const RichWordEditor: React.FC<RichWordEditorProps> = ({
       },
       onOpenCalculator: () => {},
       onInsertLink: () => {
-        const linkHtml = '<span style="color: #7c5cff; text-decoration: underline; cursor: pointer;">[[Новая ссылка]]</span> ';
-        document.execCommand('insertHTML', false, linkHtml);
+        restoreSelection();
+        const link = prompt('Введите название мысли для связи [[...]]:', '');
+        if (link && link.trim()) {
+          const clean = link.trim().replace(/^\[\[/, '').replace(/\]\]$/, '');
+          const linkHtml = `<span class="wikilink-node" data-link="${clean}" style="background: rgba(124, 92, 255, 0.2); color: #a78bfa; font-weight: bold; border-radius: 4px; padding: 1px 6px; text-decoration: underline; cursor: pointer;">[[${clean}]]</span>&nbsp;`;
+          document.execCommand('insertHTML', false, linkHtml);
+        } else if (link === '') {
+          const linkHtml = '<span class="wikilink-node" style="background: rgba(124, 92, 255, 0.2); color: #a78bfa; font-weight: bold; border-radius: 4px; padding: 1px 6px; text-decoration: underline; cursor: pointer;">[[Новая мысль]]</span>&nbsp;';
+          document.execCommand('insertHTML', false, linkHtml);
+        }
+        saveCurrentSelection();
         handleEditorInput();
       },
       onAutoFixOrthography: handleAutoFixOrthography,
@@ -1073,12 +1170,30 @@ export const RichWordEditor: React.FC<RichWordEditorProps> = ({
         }
       `}</style>
 
-      {/* 1. Word Formatting Ribbon Bar */}
-      <WordStyleRibbon
-        handlers={ribbonHandlers}
-        currentSize={currentSize}
-        currentAlign={currentAlign}
-      />
+      {/* 1. Mobile Format Bar Toggle */}
+      <div className="w-full flex items-center justify-start gap-2 px-1 sm:hidden">
+        <button
+          type="button"
+          onClick={() => setIsRibbonExpanded((v) => !v)}
+          className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm ${
+            isRibbonExpanded
+              ? 'bg-[#7c5cff] text-white border-[#7c5cff]'
+              : 'bg-[#14151e] text-[#cbd5e1] border-white/[0.08] hover:text-white'
+          }`}
+        >
+          <span className="font-serif font-bold text-sm">Aa</span>
+          <span>{isRibbonExpanded ? 'Скрыть панель' : 'Форматирование'}</span>
+        </button>
+      </div>
+
+      {/* 1. Full Word Formatting Ribbon Bar (Always visible on desktop, toggleable on mobile) */}
+      <div className={`${isRibbonExpanded ? 'block' : 'hidden sm:block'} transition-all`}>
+        <WordStyleRibbon
+          handlers={ribbonHandlers}
+          currentSize={currentSize}
+          currentAlign={currentAlign}
+        />
+      </div>
 
       {/* 1.1 Spellcheck Notification Toast */}
       {fixNotification && (
@@ -1192,11 +1307,11 @@ export const RichWordEditor: React.FC<RichWordEditorProps> = ({
         value={noteTitle || ''}
         onChange={(e) => onTitleChange(e.target.value)}
         placeholder="Заголовок заметки..."
-        className="w-full bg-transparent text-3xl font-extrabold text-white focus:outline-none placeholder:text-[#475569] tracking-tight px-1 py-1"
+        className="w-full bg-transparent text-2xl sm:text-3xl font-extrabold text-white focus:outline-none placeholder:text-[#475569] tracking-tight px-1 py-1"
       />
 
       {/* 5. Full Width Visual Content Workspace with clean horizontal table scroll */}
-      <div className="w-full max-w-full bg-[#101117]/80 border border-white/[0.08] rounded-2xl p-8 min-h-[580px] shadow-2xl focus-within:border-[#7c5cff]/50 transition-colors overflow-x-auto">
+      <div className="w-full max-w-full bg-transparent sm:bg-[#101117]/80 border-0 sm:border sm:border-white/[0.08] rounded-none sm:rounded-2xl p-1.5 sm:p-8 min-h-[60vh] sm:shadow-2xl focus-within:border-[#7c5cff]/50 transition-colors overflow-x-auto">
         <div
           ref={editorRef}
           contentEditable
@@ -1210,9 +1325,10 @@ export const RichWordEditor: React.FC<RichWordEditorProps> = ({
           onSelect={updateSelectionFormatting}
           onKeyUp={updateSelectionFormatting}
           onMouseUp={updateSelectionFormatting}
-          className="rich-word-content w-full h-full min-h-[520px] max-w-full bg-transparent text-[#e2e8f0] text-base leading-relaxed focus:outline-none select-text font-sans selection:bg-[#7c5cff]/40 overflow-x-auto"
+          onTouchEnd={updateSelectionFormatting}
+          className="rich-word-content w-full h-full min-h-[500px] max-w-full bg-transparent text-[#e2e8f0] text-base leading-relaxed focus:outline-none select-text font-sans selection:bg-[#7c5cff]/40 overflow-x-auto"
           style={{
-            minHeight: '520px',
+            minHeight: '500px',
           }}
         />
       </div>

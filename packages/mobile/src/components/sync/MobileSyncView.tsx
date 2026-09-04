@@ -14,7 +14,7 @@ import { p2pSyncService, SyncStatus } from '../../services/mobileP2PSyncService'
 import { useMobileBrainStore } from '../../store/useMobileBrainStore';
 
 export const MobileSyncView: React.FC = () => {
-  const { neurons, setNeurons } = useMobileBrainStore();
+  const { neurons, setNeurons, transactions, shifts, savingsGoals } = useMobileBrainStore();
   const [status, setStatus] = useState<SyncStatus>(p2pSyncService.getStatus());
   const [ipInput, setIpInput] = useState(status.remoteIp || '');
   const [successBanner, setSuccessBanner] = useState(false);
@@ -29,9 +29,13 @@ export const MobileSyncView: React.FC = () => {
       p2pSyncService.setRemoteIp(ipInput.trim());
     }
     p2pSyncService.syncWithDesktop(
-      () => neurons,
+      () => ({ neurons, transactions, shifts, savingsGoals }),
       (updated) => {
-        setNeurons(updated);
+        if (updated.neurons && Array.isArray(updated.neurons)) {
+          setNeurons(updated.neurons);
+        } else if (updated.notes && Array.isArray(updated.notes)) {
+          setNeurons(updated.notes);
+        }
         setSuccessBanner(true);
         setTimeout(() => setSuccessBanner(false), 4000);
       }

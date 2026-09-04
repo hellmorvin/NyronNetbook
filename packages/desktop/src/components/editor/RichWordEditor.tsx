@@ -262,6 +262,38 @@ export const RichWordEditor: React.FC<RichWordEditorProps> = ({
   // Inline Math Suggestion State
   const [inlineMathSuggestion, setInlineMathSuggestion] = useState<{ expr: string; result: number } | null>(null);
 
+  // Saved Selection Range for rock-solid mobile touch formatting without caret jumps
+  const savedRangeRef = useRef<Range | null>(null);
+
+  const saveCurrentSelection = useCallback(() => {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0 && editorRef.current && sel.anchorNode && editorRef.current.contains(sel.anchorNode)) {
+      savedRangeRef.current = sel.getRangeAt(0).cloneRange();
+    }
+  }, []);
+
+  const restoreSelection = useCallback(() => {
+    if (savedRangeRef.current && editorRef.current) {
+      editorRef.current.focus();
+      const sel = window.getSelection();
+      if (sel) {
+        sel.removeAllRanges();
+        sel.addRange(savedRangeRef.current);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleSel = () => {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0 && editorRef.current && sel.anchorNode && editorRef.current.contains(sel.anchorNode)) {
+        savedRangeRef.current = sel.getRangeAt(0).cloneRange();
+      }
+    };
+    document.addEventListener('selectionchange', handleSel);
+    return () => document.removeEventListener('selectionchange', handleSel);
+  }, []);
+
   // Initialize editor content ONLY ONCE per noteId
   useEffect(() => {
     if (editorRef.current && (lastLoadedNoteId.current !== noteId || !lastLoadedNoteId.current)) {
@@ -595,14 +627,19 @@ export const RichWordEditor: React.FC<RichWordEditorProps> = ({
         handleEditorInput();
       },
       onBold: () => {
+        restoreSelection();
         document.execCommand('bold', false);
+        saveCurrentSelection();
         handleEditorInput();
       },
       onItalic: () => {
+        restoreSelection();
         document.execCommand('italic', false);
+        saveCurrentSelection();
         handleEditorInput();
       },
       onUnderline: () => {
+        restoreSelection();
         const sel = window.getSelection();
         if (sel && sel.anchorNode) {
           let node = sel.anchorNode.nodeType === 3 ? sel.anchorNode.parentElement : (sel.anchorNode as HTMLElement);
@@ -618,16 +655,20 @@ export const RichWordEditor: React.FC<RichWordEditorProps> = ({
                 while (u.firstChild) p?.insertBefore(u.firstChild, u);
                 u.remove();
               });
+              saveCurrentSelection();
               handleEditorInput();
               return;
             }
           }
         }
         document.execCommand('underline', false);
+        saveCurrentSelection();
         handleEditorInput();
       },
       onStrikethrough: () => {
+        restoreSelection();
         document.execCommand('strikeThrough', false);
+        saveCurrentSelection();
         handleEditorInput();
       },
       onHighlight: (color: string, autoTextColor?: string) => {
@@ -1210,6 +1251,7 @@ export const RichWordEditor: React.FC<RichWordEditorProps> = ({
           onSelect={updateSelectionFormatting}
           onKeyUp={updateSelectionFormatting}
           onMouseUp={updateSelectionFormatting}
+          onTouchEnd={updateSelectionFormatting}
           className="rich-word-content w-full h-full min-h-[520px] max-w-full bg-transparent text-[#e2e8f0] text-base leading-relaxed focus:outline-none select-text font-sans selection:bg-[#7c5cff]/40 overflow-x-auto"
           style={{
             minHeight: '520px',

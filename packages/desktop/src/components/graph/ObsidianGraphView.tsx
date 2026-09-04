@@ -19,7 +19,7 @@ import {
   Sliders,
   ZoomIn,
   ZoomOut,
-  Layers,
+  LayoutGrid,
   Plus,
   ArrowRight,
   Unlink,
@@ -124,15 +124,14 @@ export const ObsidianGraphView: React.FC = () => {
     themePreset,
     themeMode,
     uiSettings,
-    spiderMode,
     selectNeuron,
     openNote,
     openTab,
     togglePin,
-    toggleSpiderMode,
     deleteNeuron,
     updateNeuron,
     updateGraphSettings,
+    openNodeConnectionsOnCanvas,
   } = useBrainStore();
 
   const isSystemDark =
@@ -593,7 +592,7 @@ export const ObsidianGraphView: React.FC = () => {
     simNodes, simLinks, activeNeuronId, graphSettings,
     isLinkingMode, linkingSourceNode, isNodeMatch,
     graphSearchQuery, selectedTagFilter, nodeNeighborsMap,
-    spiderMode, colorMode, showGrid, linkThickness,
+    colorMode, showGrid, linkThickness,
     currentAccent, isLight, canvasBg,
   ]);
 
@@ -1015,18 +1014,6 @@ export const ObsidianGraphView: React.FC = () => {
             <Type size={15} />
           </button>
 
-          {/* Spider mode */}
-          <button
-            onClick={toggleSpiderMode}
-            title={spiderMode ? 'Режим паука вкл.' : 'Режим паука'}
-            className="w-8 h-8 flex items-center justify-center rounded-xl transition-all hover:scale-110 active:scale-95"
-            style={{
-              color: spiderMode ? '#f59e0b' : (isLight ? '#475569' : '#94a3b8'),
-              background: spiderMode ? 'rgba(245,158,11,0.15)' : 'transparent',
-            }}
-          >
-            <Layers size={15} />
-          </button>
 
           {/* Link mode */}
           <button
@@ -1043,6 +1030,30 @@ export const ObsidianGraphView: React.FC = () => {
             }}
           >
             <Link2 size={15} className={isLinkingMode ? 'animate-pulse' : ''} />
+          </button>
+
+          {/* Canvas Transition Button */}
+          <button
+            onClick={() => {
+              const targetNode = activeNeuronId ? neurons.find((n) => n.id === activeNeuronId) : null;
+              if (targetNode) {
+                const res = openNodeConnectionsOnCanvas(targetNode.id);
+                openTab({ type: 'canvas', title: 'Холст' });
+                showToast(`🎨 «${targetNode.title}» и ${res.connectionsCount} связей открыты на Холсте!`);
+              } else {
+                openTab({ type: 'canvas', title: 'Холст' });
+                showToast('🎨 Открыт интерактивный Холст');
+              }
+            }}
+            title="Открыть мысль и связи на Холсте 🎨"
+            className="w-8 h-8 flex items-center justify-center rounded-xl transition-all hover:scale-110 active:scale-95"
+            style={{
+              color: '#a78bfa',
+              background: 'rgba(139, 92, 246, 0.16)',
+              border: '1px solid rgba(139, 92, 246, 0.3)',
+            }}
+          >
+            <LayoutGrid size={15} />
           </button>
 
           {/* Divider */}
@@ -1325,6 +1336,20 @@ export const ObsidianGraphView: React.FC = () => {
               accent: false,
             },
             {
+              icon: <LayoutGrid size={13} style={{ color: '#a78bfa' }} />,
+              label: 'Открыть связи на Холсте 🎨',
+              onClick: (e: React.MouseEvent) => {
+                e.stopPropagation();
+                if (contextMenu.node) {
+                  const res = openNodeConnectionsOnCanvas(contextMenu.node.id);
+                  openTab({ type: 'canvas', title: 'Холст' });
+                  showToast(`🎨 «${contextMenu.node.title}» и ${res.connectionsCount} связей на Холсте!`);
+                  setContextMenu(null);
+                }
+              },
+              accent: false,
+            },
+            {
               icon: <Link2 size={13} style={{ color: currentAccent }} />,
               label: 'Связать с другой...',
               onClick: (e: React.MouseEvent) => {
@@ -1386,20 +1411,35 @@ export const ObsidianGraphView: React.FC = () => {
                   className="px-3 py-1.5 rounded-lg flex items-center justify-between"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <span className="truncate text-[11px] max-w-[150px]" style={{ color: isLight ? '#64748b' : '#94a3b8' }}>{target.title}</span>
-                  <button
-                    onClick={() => {
-                      if (contextMenu.node) {
-                        disconnectNeurons(contextMenu.node.id, target.id);
-                        setContextMenu(null);
-                      }
-                    }}
-                    className="p-1 rounded-lg transition-all"
-                    style={{ color: '#f43f5e' }}
-                    title="Удалить связь"
-                  >
-                    <Unlink size={11} />
-                  </button>
+                  <span className="truncate text-[11px] max-w-[130px]" style={{ color: isLight ? '#64748b' : '#94a3b8' }}>{target.title}</span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => {
+                        if (contextMenu.node) {
+                          openNodeConnectionsOnCanvas(contextMenu.node.id);
+                          openTab({ type: 'canvas', title: 'Холст' });
+                          setContextMenu(null);
+                        }
+                      }}
+                      className="p-1 rounded-lg transition-all hover:bg-purple-500/10 text-purple-400"
+                      title="Открыть связи на Холсте"
+                    >
+                      <LayoutGrid size={11} />
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (contextMenu.node) {
+                          disconnectNeurons(contextMenu.node.id, target.id);
+                          setContextMenu(null);
+                        }
+                      }}
+                      className="p-1 rounded-lg transition-all"
+                      style={{ color: '#f43f5e' }}
+                      title="Удалить связь"
+                    >
+                      <Unlink size={11} />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

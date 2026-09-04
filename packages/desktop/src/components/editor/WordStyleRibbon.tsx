@@ -159,8 +159,9 @@ export const WordStyleRibbon: React.FC<WordStyleRibbonProps> = ({
           {/* Bold (Ж) */}
           <button
             onMouseDown={(e) => e.preventDefault()}
+            onTouchStart={(e) => e.preventDefault()}
             onClick={handlers.onBold}
-            className="h-9 w-9 rounded-xl bg-white/[0.05] hover:bg-[#7c5cff]/30 text-white font-black text-sm flex items-center justify-center border border-white/[0.06] transition-colors"
+            className="h-9 w-9 rounded-xl bg-white/[0.05] hover:bg-[#7c5cff]/30 text-white font-black text-sm flex items-center justify-center border border-white/[0.06] transition-colors active:scale-95"
             title="Полужирный (Ж / Ctrl+B)"
           >
             Ж
@@ -169,8 +170,9 @@ export const WordStyleRibbon: React.FC<WordStyleRibbonProps> = ({
           {/* Italic (К) */}
           <button
             onMouseDown={(e) => e.preventDefault()}
+            onTouchStart={(e) => e.preventDefault()}
             onClick={handlers.onItalic}
-            className="h-9 w-9 rounded-xl bg-white/[0.05] hover:bg-[#7c5cff]/30 text-white italic font-serif text-sm flex items-center justify-center border border-white/[0.06] transition-colors"
+            className="h-9 w-9 rounded-xl bg-white/[0.05] hover:bg-[#7c5cff]/30 text-white italic font-serif text-sm flex items-center justify-center border border-white/[0.06] transition-colors active:scale-95"
             title="Курсив (К / Ctrl+I)"
           >
             К
@@ -179,8 +181,9 @@ export const WordStyleRibbon: React.FC<WordStyleRibbonProps> = ({
           {/* Underline (Ч) */}
           <button
             onMouseDown={(e) => e.preventDefault()}
+            onTouchStart={(e) => e.preventDefault()}
             onClick={handlers.onUnderline}
-            className="h-9 w-9 rounded-xl bg-white/[0.05] hover:bg-[#7c5cff]/30 text-white underline font-bold text-sm flex items-center justify-center border border-white/[0.06] transition-colors"
+            className="h-9 w-9 rounded-xl bg-white/[0.05] hover:bg-[#7c5cff]/30 text-white underline font-bold text-sm flex items-center justify-center border border-white/[0.06] transition-colors active:scale-95"
             title="Подчеркнутый (Ч / Ctrl+U)"
           >
             Ч
@@ -189,8 +192,9 @@ export const WordStyleRibbon: React.FC<WordStyleRibbonProps> = ({
           {/* Strikethrough (ab) */}
           <button
             onMouseDown={(e) => e.preventDefault()}
+            onTouchStart={(e) => e.preventDefault()}
             onClick={handlers.onStrikethrough}
-            className="h-9 w-9 rounded-xl bg-white/[0.05] hover:bg-[#7c5cff]/30 text-[#cbd5e1] hover:text-white line-through font-mono text-xs flex items-center justify-center border border-white/[0.06] transition-colors"
+            className="h-9 w-9 rounded-xl bg-white/[0.05] hover:bg-[#7c5cff]/30 text-[#cbd5e1] hover:text-white line-through font-mono text-xs flex items-center justify-center border border-white/[0.06] transition-colors active:scale-95"
             title="Зачеркнутый (ab)"
           >
             ab
@@ -201,8 +205,9 @@ export const WordStyleRibbon: React.FC<WordStyleRibbonProps> = ({
             <div className="flex items-center h-9 bg-white/[0.05] border border-white/[0.06] rounded-xl overflow-hidden">
               <button
                 onMouseDown={(e) => e.preventDefault()}
+                onTouchStart={(e) => e.preventDefault()}
                 onClick={() => applyHighlightWithContrast(activeHighlightColor)}
-                className="px-2.5 h-full flex items-center gap-1.5 hover:bg-[#7c5cff]/20 text-[#cbd5e1] hover:text-white transition-colors"
+                className="px-2.5 h-full flex items-center gap-1.5 hover:bg-[#7c5cff]/20 text-[#cbd5e1] hover:text-white transition-colors active:scale-95"
                 title="Маркер (с автоматическим подбором цвета текста)"
               >
                 <Highlighter size={14} style={{ color: activeHighlightColor !== 'transparent' ? activeHighlightColor : '#fef08a' }} />
@@ -213,6 +218,7 @@ export const WordStyleRibbon: React.FC<WordStyleRibbonProps> = ({
               </button>
               <button
                 onMouseDown={(e) => e.preventDefault()}
+                onTouchStart={(e) => e.preventDefault()}
                 onClick={() => setIsHighlightMenuOpen(!isHighlightMenuOpen)}
                 className="px-1.5 h-full hover:bg-white/[0.08] text-[#94a3b8] hover:text-white border-l border-white/[0.08]"
               >
@@ -265,8 +271,9 @@ export const WordStyleRibbon: React.FC<WordStyleRibbonProps> = ({
             <div className="flex items-center h-9 bg-white/[0.05] border border-white/[0.06] rounded-xl overflow-hidden">
               <button
                 onMouseDown={(e) => e.preventDefault()}
+                onTouchStart={(e) => e.preventDefault()}
                 onClick={() => handlers.onTextColor(activeTextColor)}
-                className="px-2.5 h-full flex items-center gap-1.5 hover:bg-[#7c5cff]/20 text-[#cbd5e1] hover:text-white transition-colors"
+                className="px-2.5 h-full flex items-center gap-1.5 hover:bg-[#7c5cff]/20 text-[#cbd5e1] hover:text-white transition-colors active:scale-95"
                 title="Цвет текста"
               >
                 <span className="font-extrabold text-sm underline" style={{ color: activeTextColor }}>A</span>
@@ -277,6 +284,7 @@ export const WordStyleRibbon: React.FC<WordStyleRibbonProps> = ({
               </button>
               <button
                 onMouseDown={(e) => e.preventDefault()}
+                onTouchStart={(e) => e.preventDefault()}
                 onClick={() => setIsTextColorMenuOpen(!isTextColorMenuOpen)}
                 className="px-1.5 h-full hover:bg-white/[0.08] text-[#94a3b8] hover:text-white border-l border-white/[0.08]"
               >
@@ -292,12 +300,13 @@ export const WordStyleRibbon: React.FC<WordStyleRibbonProps> = ({
                     <button
                       key={c.name}
                       onMouseDown={(e) => e.preventDefault()}
+                      onTouchStart={(e) => e.preventDefault()}
                       onClick={() => {
                         setActiveTextColor(c.color);
                         handlers.onTextColor(c.color);
                         setIsTextColorMenuOpen(false);
                       }}
-                      className="w-full h-7 rounded-lg border border-black/30 flex items-center justify-center hover:scale-105 transition-transform"
+                      className="w-full h-7 rounded-lg border border-black/30 flex items-center justify-center hover:scale-105 transition-transform active:scale-95"
                       style={{ backgroundColor: c.color }}
                       title={c.name}
                     />
@@ -330,8 +339,9 @@ export const WordStyleRibbon: React.FC<WordStyleRibbonProps> = ({
           {/* Clear Formatting */}
           <button
             onMouseDown={(e) => e.preventDefault()}
+            onTouchStart={(e) => e.preventDefault()}
             onClick={handlers.onClearFormat}
-            className="h-9 w-9 rounded-xl bg-white/[0.05] hover:bg-rose-500/20 text-[#94a3b8] hover:text-rose-400 flex items-center justify-center border border-white/[0.06] transition-colors"
+            className="h-9 w-9 rounded-xl bg-white/[0.05] hover:bg-rose-500/20 text-[#94a3b8] hover:text-rose-400 flex items-center justify-center border border-white/[0.06] transition-colors active:scale-95"
             title="Очистить форматирование"
           >
             <Eraser size={14} />
@@ -344,8 +354,9 @@ export const WordStyleRibbon: React.FC<WordStyleRibbonProps> = ({
         <div className="flex items-center gap-1">
           <button
             onMouseDown={(e) => e.preventDefault()}
+            onTouchStart={(e) => e.preventDefault()}
             onClick={() => handlers.onAlign('left')}
-            className={`h-9 w-9 rounded-xl flex items-center justify-center transition-colors ${
+            className={`h-9 w-9 rounded-xl flex items-center justify-center transition-colors active:scale-95 ${
               currentAlign === 'left' ? 'bg-[#7c5cff] text-white shadow' : 'bg-white/[0.05] text-[#94a3b8] hover:text-white'
             }`}
             title="По левому краю"
@@ -355,8 +366,9 @@ export const WordStyleRibbon: React.FC<WordStyleRibbonProps> = ({
 
           <button
             onMouseDown={(e) => e.preventDefault()}
+            onTouchStart={(e) => e.preventDefault()}
             onClick={() => handlers.onAlign('center')}
-            className={`h-9 w-9 rounded-xl flex items-center justify-center transition-colors ${
+            className={`h-9 w-9 rounded-xl flex items-center justify-center transition-colors active:scale-95 ${
               currentAlign === 'center' ? 'bg-[#7c5cff] text-white shadow' : 'bg-white/[0.05] text-[#94a3b8] hover:text-white'
             }`}
             title="По центру"
@@ -366,8 +378,9 @@ export const WordStyleRibbon: React.FC<WordStyleRibbonProps> = ({
 
           <button
             onMouseDown={(e) => e.preventDefault()}
+            onTouchStart={(e) => e.preventDefault()}
             onClick={() => handlers.onAlign('right')}
-            className={`h-9 w-9 rounded-xl flex items-center justify-center transition-colors ${
+            className={`h-9 w-9 rounded-xl flex items-center justify-center transition-colors active:scale-95 ${
               currentAlign === 'right' ? 'bg-[#7c5cff] text-white shadow' : 'bg-white/[0.05] text-[#94a3b8] hover:text-white'
             }`}
             title="По правому краю"
@@ -377,8 +390,9 @@ export const WordStyleRibbon: React.FC<WordStyleRibbonProps> = ({
 
           <button
             onMouseDown={(e) => e.preventDefault()}
+            onTouchStart={(e) => e.preventDefault()}
             onClick={() => handlers.onAlign('justify')}
-            className={`h-9 w-9 rounded-xl flex items-center justify-center transition-colors ${
+            className={`h-9 w-9 rounded-xl flex items-center justify-center transition-colors active:scale-95 ${
               currentAlign === 'justify' ? 'bg-[#7c5cff] text-white shadow' : 'bg-white/[0.05] text-[#94a3b8] hover:text-white'
             }`}
             title="По ширине"
@@ -391,8 +405,9 @@ export const WordStyleRibbon: React.FC<WordStyleRibbonProps> = ({
           {/* Bullet List */}
           <button
             onMouseDown={(e) => e.preventDefault()}
+            onTouchStart={(e) => e.preventDefault()}
             onClick={handlers.onBulletList}
-            className="h-9 w-9 rounded-xl bg-white/[0.05] hover:bg-[#7c5cff]/30 text-[#cbd5e1] hover:text-white flex items-center justify-center border border-white/[0.06] transition-colors"
+            className="h-9 w-9 rounded-xl bg-white/[0.05] hover:bg-[#7c5cff]/30 text-[#cbd5e1] hover:text-white flex items-center justify-center border border-white/[0.06] transition-colors active:scale-95"
             title="Маркированный список"
           >
             <List size={15} />
@@ -401,8 +416,9 @@ export const WordStyleRibbon: React.FC<WordStyleRibbonProps> = ({
           {/* Numbered List */}
           <button
             onMouseDown={(e) => e.preventDefault()}
+            onTouchStart={(e) => e.preventDefault()}
             onClick={handlers.onNumberedList}
-            className="h-9 w-9 rounded-xl bg-white/[0.05] hover:bg-[#7c5cff]/30 text-[#cbd5e1] hover:text-white flex items-center justify-center border border-white/[0.06] transition-colors"
+            className="h-9 w-9 rounded-xl bg-white/[0.05] hover:bg-[#7c5cff]/30 text-[#cbd5e1] hover:text-white flex items-center justify-center border border-white/[0.06] transition-colors active:scale-95"
             title="Нумерованный список"
           >
             <ListOrdered size={15} />
@@ -411,8 +427,9 @@ export const WordStyleRibbon: React.FC<WordStyleRibbonProps> = ({
           {/* Checklist */}
           <button
             onMouseDown={(e) => e.preventDefault()}
+            onTouchStart={(e) => e.preventDefault()}
             onClick={handlers.onChecklist}
-            className="h-9 w-9 rounded-xl bg-white/[0.05] hover:bg-[#7c5cff]/30 text-[#cbd5e1] hover:text-white flex items-center justify-center border border-white/[0.06] transition-colors"
+            className="h-9 w-9 rounded-xl bg-white/[0.05] hover:bg-[#7c5cff]/30 text-[#cbd5e1] hover:text-white flex items-center justify-center border border-white/[0.06] transition-colors active:scale-95"
             title="Список задач (чекбокс)"
           >
             <CheckSquare size={14} />
@@ -426,8 +443,9 @@ export const WordStyleRibbon: React.FC<WordStyleRibbonProps> = ({
           {/* Insert Table */}
           <button
             onMouseDown={(e) => e.preventDefault()}
+            onTouchStart={(e) => e.preventDefault()}
             onClick={() => handlers.onInsertEmptyTable(2, 3)}
-            className="h-9 px-3 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 font-semibold text-xs flex items-center gap-1.5 border border-emerald-500/30 transition-colors shadow-sm"
+            className="h-9 px-3 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 font-semibold text-xs flex items-center gap-1.5 border border-emerald-500/30 transition-colors shadow-sm active:scale-95"
             title="Вставить таблицу с нумерацией строк"
           >
             <TableIcon size={14} />
@@ -438,8 +456,9 @@ export const WordStyleRibbon: React.FC<WordStyleRibbonProps> = ({
           {handlers.onInsertLink && (
             <button
               onMouseDown={(e) => e.preventDefault()}
+              onTouchStart={(e) => e.preventDefault()}
               onClick={handlers.onInsertLink}
-              className="h-9 w-9 rounded-xl bg-white/[0.05] hover:bg-[#7c5cff]/30 text-[#cbd5e1] hover:text-white flex items-center justify-center border border-white/[0.06] transition-colors"
+              className="h-9 w-9 rounded-xl bg-white/[0.05] hover:bg-[#7c5cff]/30 text-[#cbd5e1] hover:text-white flex items-center justify-center border border-white/[0.06] transition-colors active:scale-95"
               title="Вставить ссылку [[Заметка]]"
             >
               <Link2 size={14} />

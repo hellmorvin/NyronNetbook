@@ -19,16 +19,19 @@ import {
   Sliders,
   ZoomIn,
   ZoomOut,
-  Layers,
   Plus,
   ArrowRight,
   Unlink,
   Check,
+  Zap,
+  LayoutGrid,
 } from 'lucide-react';
 import {
   IconGraph2D,
 } from '../icons/CustomNeironoIcons';
 import { useBrainStore, THEME_CONFIGS } from '../../store/useBrainStore';
+import { MobileGraphConnectionsSheet } from './MobileGraphConnectionsSheet';
+import { MobileCanvasBridgeSheet } from './MobileCanvasBridgeSheet';
 
 interface SimNode {
   id: string;
@@ -124,15 +127,16 @@ export const ObsidianGraphView: React.FC = () => {
     themePreset,
     themeMode,
     uiSettings,
-    spiderMode,
     selectNeuron,
     openNote,
     openTab,
     togglePin,
-    toggleSpiderMode,
     deleteNeuron,
     updateNeuron,
     updateGraphSettings,
+    canvasCards,
+    canvasConnections,
+    openNodeConnectionsOnCanvas,
   } = useBrainStore();
 
   const isSystemDark =
@@ -160,6 +164,11 @@ export const ObsidianGraphView: React.FC = () => {
   const [linkingSourceNode, setLinkingSourceNode] = useState<SimNode | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [selectedMobileNode, setSelectedMobileNode] = useState<SimNode | null>(null);
+  const [mobileConnectModalSource, setMobileConnectModalSource] = useState<SimNode | null>(null);
+  const [mobileConnectSearch, setMobileConnectSearch] = useState('');
+  const [isConnectionsSheetOpen, setIsConnectionsSheetOpen] = useState(false);
+  const [connectionsSheetSourceId, setConnectionsSheetSourceId] = useState<string | null>(null);
+  const [isCanvasBridgeOpen, setIsCanvasBridgeOpen] = useState(false);
 
   const isLinkingModeRef = useRef(false);
   isLinkingModeRef.current = isLinkingMode;
@@ -194,6 +203,8 @@ export const ObsidianGraphView: React.FC = () => {
   const isPanningCanvasRef = useRef(false);
   const panStartRef = useRef({ x: 0, y: 0 });
   const simulationRef = useRef<any>(null);
+  const textWidthCacheRef = useRef<Map<string, number>>(new Map());
+  const requestRenderRef = useRef<(() => void) | null>(null);
 
   // Touch & Pinch-to-zoom tracking ref
   const touchStateRef = useRef<{
@@ -305,6 +316,7 @@ export const ObsidianGraphView: React.FC = () => {
       const width = containerRef.current.clientWidth || 800;
       const height = containerRef.current.clientHeight || 600;
       transformRef.current = { x: width / 2, y: height / 2, k: 1.0 };
+      requestRenderRef.current?.();
     }
   }, []);
 
@@ -364,10 +376,14 @@ export const ObsidianGraphView: React.FC = () => {
             const linkCount = d.linkCount || 0;
             return (4.5 + Math.sqrt(linkCount) * 2.0) * (graphSettings.nodeSize || 1.0) + 26;
           })
-          .iterations(3)
+          .iterations(1)
       )
-      .alphaDecay(0.018)
+      .alphaDecay(0.024)
       .velocityDecay(0.38);
+
+    sim.on('tick', () => {
+      requestRenderRef.current?.();
+    });
 
     simulationRef.current = sim;
 
@@ -465,7 +481,7 @@ export const ObsidianGraphView: React.FC = () => {
     const render = () => {
       const width  = containerRef.current?.clientWidth  || 800;
       const height = containerRef.current?.clientHeight || 600;
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
 
       if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
         canvas.width  = width  * dpr;
@@ -500,7 +516,7 @@ export const ObsidianGraphView: React.FC = () => {
 
       const isSearchActive  = Boolean(graphSearchQuery.trim() || selectedTagFilter);
       const hoveredId       = hoveredNodeRef.current?.id;
-      const focusTargetId   = hoveredId || activeNeuronId;
+      const focusTargetId   = hoveredId || selectedMobileNode?.id || activeNeuronId;
       const focusNeighbors  = focusTargetId ? nodeNeighborsMap.get(focusTargetId) : null;
 
       // ── Links (straight, thin) ────────────────────────────────────────
@@ -519,7 +535,7 @@ export const ObsidianGraphView: React.FC = () => {
 
         if (isFocusLink) {
           ctx.strokeStyle = LINK_HIGHLIGHT;
-          ctx.globalAlpha = 0.85;
+          ctx.globalAlpha = 0.95;
           ctx.lineWidth   = (linkThickness * 1.4) / tr.k;
         } else if (focusTargetId) {
           ctx.strokeStyle = LINK_COLOR;
@@ -538,12 +554,12 @@ export const ObsidianGraphView: React.FC = () => {
       simNodes.forEach((node) => {
         if (node.x == null || node.y == null) return;
 
-        const isSelected    = node.id === activeNeuronId;
+        const isSelected    = node.id === activeNeuronId || node.id === selectedMobileNode?.id;
         const isHovered     = node.id === hoveredId;
         const isLinkSrc     = isLinkingMode && linkingSourceNode?.id === node.id;
         const isMatched     = isNodeMatch(node);
         const isNeighbor    = focusTargetId && focusNeighbors ? focusNeighbors.has(node.id) : false;
-        const isFocusNode   = isSelected || isHovered || isLinkSrc;
+        const isFocusNode   = (focusTargetId ? node.id === focusTargetId : isSelected) || isHovered || isLinkSrc;
         const isDimmed      =
           (isSearchActive && !isMatched) ||
           (focusTargetId && !isNeighbor && !isFocusNode);
@@ -589,40 +605,94 @@ export const ObsidianGraphView: React.FC = () => {
 
         ctx.globalAlpha = 1;
 
-        // ── Label ─────────────────────────────────────────────────────
+        // ── Label with Touch-Friendly Sleek Pill Badge ──────────────────
         if (graphSettings.showLabels || isFocusNode) {
-          const fontSize    = isFocusNode ? 11.5 : 9;
-          const fontWeight  = isFocusNode ? '700' : '400';
-          const labelAlpha  = isDimmed ? 0.22 : (isFocusNode ? 1.0 : 0.82);
-          const title       = node.title.length > 28 ? node.title.slice(0, 26) + '…' : node.title;
+          const fontSize    = isFocusNode ? 11 : 9.5;
+          const fontWeight  = isFocusNode ? '700' : '500';
+          const labelAlpha  = isDimmed ? 0.22 : (isFocusNode ? 1.0 : 0.88);
+          const title       = node.title.length > 24 ? node.title.slice(0, 22) + '…' : node.title;
 
-          ctx.font          = `${fontWeight} ${fontSize}px -apple-system, "Segoe UI", ui-sans-serif, sans-serif`;
-          ctx.textAlign     = 'center';
-          ctx.textBaseline  = 'top';
+          ctx.font          = `${fontWeight} ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+          let textWidth = textWidthCacheRef.current.get(title);
+          if (textWidth === undefined) {
+            textWidth = ctx.measureText(title).width;
+            textWidthCacheRef.current.set(title, textWidth);
+          }
+          const padX        = 6;
+          const padY        = 3;
+          const pillWidth   = textWidth + padX * 2;
+          const pillHeight  = fontSize + padY * 2;
+          const pillX       = node.x - pillWidth / 2;
+          const pillY       = node.y + r + 3;
+
+          ctx.save();
           ctx.globalAlpha   = labelAlpha;
-          // text shadow for readability
-          ctx.shadowColor   = isLight ? 'rgba(241,245,249,0.9)' : 'rgba(30,30,36,0.95)';
-          ctx.shadowBlur    = 3;
-          ctx.fillStyle     = isFocusNode ? LABEL_FOCUS : LABEL_COLOR;
-          ctx.fillText(title, node.x, node.y + r + 4 / tr.k);
-          ctx.shadowBlur    = 0;
-          ctx.globalAlpha   = 1;
+
+          // Background pill to prevent text clash with links
+          ctx.beginPath();
+          const pillRadius = 5;
+          if (typeof ctx.roundRect === 'function') {
+            ctx.roundRect(pillX, pillY, pillWidth, pillHeight, pillRadius);
+          } else {
+            ctx.rect(pillX, pillY, pillWidth, pillHeight);
+          }
+
+          ctx.fillStyle = isFocusNode
+            ? (isLight ? '#ffffff' : '#141622')
+            : (isLight ? 'rgba(255, 255, 255, 0.88)' : 'rgba(18, 20, 29, 0.85)');
+          ctx.fill();
+
+          // Border for active or focused pill
+          if (isFocusNode) {
+            ctx.strokeStyle = fill;
+            ctx.lineWidth   = 1;
+            ctx.stroke();
+          } else {
+            ctx.strokeStyle = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)';
+            ctx.lineWidth   = 0.5;
+            ctx.stroke();
+          }
+
+          // Text
+          ctx.textAlign     = 'center';
+          ctx.textBaseline  = 'middle';
+          ctx.fillStyle     = isFocusNode
+            ? (isLight ? '#0f172a' : '#ffffff')
+            : (isLight ? '#334155' : '#cbd5e1');
+          ctx.fillText(title, node.x, pillY + pillHeight / 2);
+
+          ctx.restore();
         }
       });
 
       ctx.restore(); // world transform
       ctx.restore(); // dpr scale
 
-      animFrameId = requestAnimationFrame(render);
+      // Controlled high-performance loop: stop when physics settles to save 100% CPU on mobile
+      const isSimActive = (simulationRef.current?.alpha() || 0) > 0.002;
+      const isInteracting = !!draggedNodeRef.current || isPanningCanvasRef.current;
+      if (isSimActive || isInteracting) {
+        animFrameId = requestAnimationFrame(render);
+      } else {
+        animFrameId = 0;
+      }
+    };
+
+    requestRenderRef.current = () => {
+      if (!animFrameId) {
+        animFrameId = requestAnimationFrame(render);
+      }
     };
 
     animFrameId = requestAnimationFrame(render);
-    return () => cancelAnimationFrame(animFrameId);
+    return () => {
+      if (animFrameId) cancelAnimationFrame(animFrameId);
+    };
   }, [
-    simNodes, simLinks, activeNeuronId, graphSettings,
+    simNodes, simLinks, activeNeuronId, selectedMobileNode, graphSettings,
     isLinkingMode, linkingSourceNode, isNodeMatch,
     graphSearchQuery, selectedTagFilter, nodeNeighborsMap,
-    spiderMode, colorMode, showGrid, linkThickness,
+    colorMode, showGrid, linkThickness,
     currentAccent, isLight, canvasBg,
   ]);
 
@@ -670,6 +740,7 @@ export const ObsidianGraphView: React.FC = () => {
         const { x, y } = getGraphCoords(e.clientX, e.clientY);
         draggedNodeRef.current.fx = x;
         draggedNodeRef.current.fy = y;
+        requestRenderRef.current?.();
         return;
       }
 
@@ -677,6 +748,7 @@ export const ObsidianGraphView: React.FC = () => {
       if (isPanningCanvasRef.current) {
         transformRef.current.x = e.clientX - panStartRef.current.x;
         transformRef.current.y = e.clientY - panStartRef.current.y;
+        requestRenderRef.current?.();
         return;
       }
 
@@ -861,6 +933,7 @@ export const ObsidianGraphView: React.FC = () => {
         transformRef.current.x = pivotX - (pivotX - initialTr.x) * (newK / initialTr.k) + dx;
         transformRef.current.y = pivotY - (pivotY - initialTr.y) * (newK / initialTr.k) + dy;
         hasMoved = true;
+        requestRenderRef.current?.();
         return;
       }
 
@@ -877,12 +950,15 @@ export const ObsidianGraphView: React.FC = () => {
           const tr = transformRef.current;
           activeTouchNode.fx = (t.clientX - rect.left - tr.x) / tr.k;
           activeTouchNode.fy = (t.clientY - rect.top - tr.y) / tr.k;
+          simulationRef.current?.alphaTarget(0.2).restart();
+          requestRenderRef.current?.();
           return;
         }
 
         if (isPanning) {
           transformRef.current.x = t.clientX - panStartX;
           transformRef.current.y = t.clientY - panStartY;
+          requestRenderRef.current?.();
         }
       }
     };
@@ -938,9 +1014,11 @@ export const ObsidianGraphView: React.FC = () => {
         if (hit) {
           selectNeuron(hit.id);
           setSelectedMobileNode(hit);
+          requestRenderRef.current?.();
         } else {
           selectNeuron(null);
           setSelectedMobileNode(null);
+          requestRenderRef.current?.();
         }
       }
     };
@@ -1014,6 +1092,7 @@ export const ObsidianGraphView: React.FC = () => {
       x: mouseX - (mouseX - tr.x) * (newK / tr.k),
       y: mouseY - (mouseY - tr.y) * (newK / tr.k),
     };
+    requestRenderRef.current?.();
   };
 
   const handleZoom = (delta: number) => {
@@ -1027,6 +1106,7 @@ export const ObsidianGraphView: React.FC = () => {
       x: width / 2 - (width / 2 - tr.x) * (newK / tr.k),
       y: height / 2 - (height / 2 - tr.y) * (newK / tr.k),
     };
+    requestRenderRef.current?.();
   };
 
   // Fit all nodes into the viewport - computes bounding box and adjusts scale/offset
@@ -1063,6 +1143,7 @@ export const ObsidianGraphView: React.FC = () => {
       x: width  / 2 - cx * scale,
       y: height / 2 - cy * scale,
     };
+    requestRenderRef.current?.();
   }, [simNodes, centerGraphInViewport]);
 
   // Connected neurons list for Context Menu
@@ -1096,20 +1177,50 @@ export const ObsidianGraphView: React.FC = () => {
 
       {/* ═══ Integrated Mobile Top Stats & Search Bar ════════════════ */}
       <div className="absolute top-2.5 inset-x-2.5 z-20 flex items-center justify-between gap-2 pointer-events-auto">
-        <div
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs shrink-0 shadow-lg"
+        <button
+          type="button"
+          onClick={() => {
+            setConnectionsSheetSourceId(null);
+            setIsConnectionsSheetOpen(true);
+          }}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs shrink-0 shadow-lg active:scale-95 transition-all group cursor-pointer"
           style={{
             background: isLight ? 'rgba(255,255,255,0.85)' : 'rgba(18,18,24,0.88)',
             border: isLight ? '1px solid rgba(0,0,0,0.09)' : '1px solid rgba(255,255,255,0.07)',
             backdropFilter: 'blur(16px)',
           }}
+          title="Управление связями графа"
         >
           <IconGraph2D size={14} color={currentAccent} />
           <span style={{ color: isLight ? '#0f172a' : '#f1f5f9', fontWeight: 700 }}>{neurons.length}</span>
           <span className="text-[10px] text-[#94a3b8]">мыслей</span>
           <span style={{ width: 3, height: 3, borderRadius: '50%', background: currentAccent, display: 'inline-block' }} />
           <span style={{ color: currentAccent, fontWeight: 700, fontFamily: 'monospace' }}>{totalSynapses}</span>
-        </div>
+          <span className="text-[10px] px-1 py-0.2 rounded bg-white/[0.06] text-[#38bdf8] font-bold group-hover:bg-[#38bdf8]/20 flex items-center gap-0.5 ml-0.5">
+            <Zap size={10} />
+            <span className="hidden xs:inline">Связи</span>
+          </span>
+        </button>
+
+        {/* Canvas Integration Button */}
+        <button
+          type="button"
+          onClick={() => setIsCanvasBridgeOpen(true)}
+          className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs shrink-0 shadow-lg active:scale-95 transition-all group cursor-pointer"
+          style={{
+            background: isLight ? 'rgba(255,255,255,0.85)' : 'rgba(18,18,24,0.88)',
+            border: isLight ? '1px solid rgba(0,0,0,0.09)' : '1px solid rgba(255,255,255,0.07)',
+            backdropFilter: 'blur(16px)',
+          }}
+          title="Интеграция с Холстом: закинуть в Граф / очистить"
+        >
+          <LayoutGrid size={13} className="text-[#8b5cf6]" />
+          <span className="text-[11px] font-bold text-white hidden xs:inline">Холст</span>
+          <span className="text-[10px] px-1 py-0.2 rounded-md bg-[#8b5cf6]/20 text-[#a78bfa] font-mono font-bold">
+            {canvasCards.length}
+          </span>
+          <Zap size={10} className="text-amber-400" />
+        </button>
 
         {/* Compact Search Bar that never collides */}
         <div className="relative flex-1 max-w-[200px] flex items-center">
@@ -1150,6 +1261,7 @@ export const ObsidianGraphView: React.FC = () => {
           )}
         </div>
       </div>
+
 
       {/* ═══ Right Vertical Toolbar ═══════════════════════════════════ */}
       <div
@@ -1223,25 +1335,12 @@ export const ObsidianGraphView: React.FC = () => {
             <Type size={15} />
           </button>
 
-          {/* Spider mode */}
-          <button
-            onClick={toggleSpiderMode}
-            title={spiderMode ? 'Режим паука вкл.' : 'Режим паука'}
-            className="w-8 h-8 flex items-center justify-center rounded-xl transition-all hover:scale-110 active:scale-95"
-            style={{
-              color: spiderMode ? '#f59e0b' : (isLight ? '#475569' : '#94a3b8'),
-              background: spiderMode ? 'rgba(245,158,11,0.15)' : 'transparent',
-            }}
-          >
-            <Layers size={15} />
-          </button>
 
           {/* Link mode */}
           <button
             onClick={() => {
               setIsLinkingMode((prev) => !prev);
               setLinkingSourceNode(null);
-              if (!isLinkingMode) showToast('Кликните по первой мысли, затем по второй');
             }}
             title="Связать мысли"
             className="w-8 h-8 flex items-center justify-center rounded-xl transition-all hover:scale-110 active:scale-95"
@@ -1416,24 +1515,45 @@ export const ObsidianGraphView: React.FC = () => {
         </div>
       )}
 
-      {/* ═══ Link Mode Banner ════════════════════════════════════════ */}
+      {/* ═══ Link Mode Banner (Single, non-colliding, clean) ════════════════ */}
       {isLinkingMode && (
-        <div className="absolute top-14 left-1/2 -translate-x-1/2 z-30 animate-fade-in">
+        <div className="absolute top-14 left-1/2 -translate-x-1/2 z-30 w-auto max-w-[92%] animate-fade-in pointer-events-auto">
           <div
-            className="flex items-center gap-3 px-4 py-2 rounded-2xl text-xs font-semibold text-white"
-            style={{ background: currentAccent, boxShadow: `0 4px 24px ${currentAccent}66` }}
+            className="flex items-center gap-2.5 px-3.5 py-2 rounded-2xl text-xs font-semibold shadow-2xl border backdrop-blur-xl"
+            style={{
+              background: isLight ? 'rgba(255,255,255,0.96)' : 'rgba(20,21,32,0.96)',
+              borderColor: `${currentAccent}60`,
+              boxShadow: `0 8px 28px ${currentAccent}35`,
+              color: isLight ? '#0f172a' : '#f8fafc',
+            }}
           >
-            <Link2 size={13} className="animate-pulse" />
-            <span>
-              {linkingSourceNode
-                ? `Выбрана «${linkingSourceNode.title.slice(0, 20)}». Кликните вторую мысль`
-                : 'Кликните по первой мысли'}
-            </span>
-            <button
-              onClick={() => { setIsLinkingMode(false); setLinkingSourceNode(null); }}
-              className="ml-1 opacity-70 hover:opacity-100 transition-opacity"
+            <div
+              className="w-6 h-6 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: `${currentAccent}22`, color: currentAccent }}
             >
-              <X size={12} />
+              <Link2 size={13} className="animate-pulse" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="block truncate text-xs font-bold">
+                {linkingSourceNode
+                  ? `Связать «${linkingSourceNode.title}» ➔`
+                  : 'Режим связи мыслей'}
+              </span>
+              <span className="block truncate text-[10px] text-[#94a3b8]">
+                {linkingSourceNode
+                  ? 'Коснитесь целевой мысли'
+                  : 'Коснитесь первой мысли на графе'}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setIsLinkingMode(false);
+                setLinkingSourceNode(null);
+              }}
+              className="ml-1 px-2.5 py-1 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] text-[#cbd5e1] text-xs font-semibold transition-all active:scale-95 shrink-0"
+            >
+              Отмена
             </button>
           </div>
         </div>
@@ -1559,14 +1679,27 @@ export const ObsidianGraphView: React.FC = () => {
               accent: false,
             },
             {
-              icon: <Link2 size={13} style={{ color: currentAccent }} />,
-              label: 'Связать с другой...',
+              icon: <LayoutGrid size={13} style={{ color: '#a78bfa' }} />,
+              label: 'Открыть связи на Холсте 🎨',
               onClick: (e: React.MouseEvent) => {
                 e.stopPropagation();
                 if (contextMenu.node) {
-                  setLinkingSourceNode(contextMenu.node);
-                  setIsLinkingMode(true);
-                  showToast(`Выбрана «${contextMenu.node.title}». Кликните вторую мысль...`);
+                  const res = openNodeConnectionsOnCanvas(contextMenu.node.id);
+                  openTab({ type: 'canvas', title: 'Холст' });
+                  showToast(`🎨 «${contextMenu.node.title}» и ${res.connectionsCount} связей открыты на Холсте!`);
+                  setContextMenu(null);
+                }
+              },
+              accent: true,
+            },
+            {
+              icon: <Zap size={13} style={{ color: currentAccent }} />,
+              label: 'Закинуть связь в Граф...',
+              onClick: (e: React.MouseEvent) => {
+                e.stopPropagation();
+                if (contextMenu.node) {
+                  setConnectionsSheetSourceId(contextMenu.node.id);
+                  setIsConnectionsSheetOpen(true);
                   setContextMenu(null);
                 }
               },
@@ -1620,20 +1753,36 @@ export const ObsidianGraphView: React.FC = () => {
                   className="px-3 py-1.5 rounded-lg flex items-center justify-between"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <span className="truncate text-[11px] max-w-[150px]" style={{ color: isLight ? '#64748b' : '#94a3b8' }}>{target.title}</span>
-                  <button
-                    onClick={() => {
-                      if (contextMenu.node) {
-                        disconnectNeurons(contextMenu.node.id, target.id);
-                        setContextMenu(null);
-                      }
-                    }}
-                    className="p-1 rounded-lg transition-all"
-                    style={{ color: '#f43f5e' }}
-                    title="Удалить связь"
-                  >
-                    <Unlink size={11} />
-                  </button>
+                  <span className="truncate text-[11px] max-w-[140px]" style={{ color: isLight ? '#64748b' : '#94a3b8' }}>{target.title}</span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => {
+                        if (contextMenu.node) {
+                          openNodeConnectionsOnCanvas(contextMenu.node.id);
+                          openTab({ type: 'canvas', title: 'Холст' });
+                          showToast(`🎨 Связь «${contextMenu.node.title} ➔ ${target.title}» открыта на Холсте`);
+                          setContextMenu(null);
+                        }
+                      }}
+                      className="p-1 rounded-lg transition-all text-[#a78bfa] hover:bg-white/[0.08]"
+                      title="Открыть связь на Холсте"
+                    >
+                      <LayoutGrid size={12} />
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (contextMenu.node) {
+                          disconnectNeurons(contextMenu.node.id, target.id);
+                          setContextMenu(null);
+                        }
+                      }}
+                      className="p-1 rounded-lg transition-all"
+                      style={{ color: '#f43f5e' }}
+                      title="Удалить связь"
+                    >
+                      <Unlink size={11} />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -1655,40 +1804,6 @@ export const ObsidianGraphView: React.FC = () => {
         </div>
       )}
 
-      {/* ═══ Mobile Linking Mode Indicator Banner ══════════════════ */}
-      {isLinkingMode && (
-        <div
-          className="absolute top-3 left-3 right-16 z-30 px-3.5 py-2.5 rounded-2xl border shadow-xl flex items-center justify-between gap-2 animate-slide-down"
-          style={{
-            background: isLight ? 'rgba(255,255,255,0.96)' : 'rgba(20,20,30,0.96)',
-            borderColor: currentAccent,
-            boxShadow: `0 8px 24px ${currentAccent}35`,
-          }}
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <Link2 size={16} className="animate-pulse shrink-0" style={{ color: currentAccent }} />
-            <div className="min-w-0 text-xs">
-              <span className="font-bold text-white block truncate">
-                {linkingSourceNode
-                  ? `Связать «${linkingSourceNode.title}» ➔ ...`
-                  : 'Выберите первую мысль'}
-              </span>
-              <span className="text-[10px] text-[#94a3b8] truncate block">
-                {linkingSourceNode ? 'Коснитесь целевой мысли' : 'Коснитесь любой точки графа'}
-              </span>
-            </div>
-          </div>
-          <button
-            onClick={() => {
-              setIsLinkingMode(false);
-              setLinkingSourceNode(null);
-            }}
-            className="px-2 py-1 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] text-[#cbd5e1] text-xs font-semibold shrink-0"
-          >
-            Отмена
-          </button>
-        </div>
-      )}
 
       {/* ═══ Mobile Node Action Bottom Card ═══════════════════════ */}
       {selectedMobileNode && !isLinkingMode && (
@@ -1728,13 +1843,30 @@ export const ObsidianGraphView: React.FC = () => {
               <span>Открыть</span>
             </button>
 
+            {/* Open on Canvas */}
+            <button
+              onClick={() => {
+                const res = openNodeConnectionsOnCanvas(selectedMobileNode.id);
+                openTab({ type: 'canvas', title: 'Холст' });
+                showToast(`🎨 «${selectedMobileNode.title}» и ${res.connectionsCount} связей открыты на Холсте!`);
+              }}
+              className="px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 active:scale-95 transition-all shadow-sm"
+              style={{
+                backgroundColor: 'rgba(167, 139, 250, 0.22)',
+                color: '#c4b5fd',
+                border: '1px solid rgba(167, 139, 250, 0.45)',
+              }}
+              title="Открыть мысль и все её связи на Холсте"
+            >
+              <LayoutGrid size={13} />
+              <span>На Холст</span>
+            </button>
+
             {/* Link button */}
             <button
               onClick={() => {
-                setLinkingSourceNode(selectedMobileNode);
-                setIsLinkingMode(true);
-                showToast(`Выбрана «${selectedMobileNode.title}». Коснитесь целевой мысли...`);
-                setSelectedMobileNode(null);
+                setConnectionsSheetSourceId(selectedMobileNode.id);
+                setIsConnectionsSheetOpen(true);
               }}
               className="px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 active:scale-95 transition-all"
               style={{
@@ -1742,9 +1874,9 @@ export const ObsidianGraphView: React.FC = () => {
                 color: currentAccent,
                 border: `1px solid ${currentAccent}50`,
               }}
-              title="Создать связь с другой мыслью"
+              title="Закинуть связь в Граф"
             >
-              <Link2 size={13} />
+              <Zap size={13} />
               <span>Связать</span>
             </button>
 
@@ -1754,13 +1886,30 @@ export const ObsidianGraphView: React.FC = () => {
                 setSelectedMobileNode(null);
                 selectNeuron(null);
               }}
-              className="p-1.5 rounded-xl text-[#94a3b8] hover:text-white hover:bg-white/[0.08] active:scale-95"
+              className="p-1.5 rounded-xl text-[#94a3b8] hover:text-white hover:bg-white/[0.08] active:scale-95 transition-all"
+              title="Закрыть"
             >
-              <X size={16} />
+              <X size={15} />
             </button>
           </div>
         </div>
       )}
+
+      {/* ═══ Full-featured Touch-First Mobile Graph Connections Sheet ═══ */}
+      <MobileGraphConnectionsSheet
+        isOpen={isConnectionsSheetOpen}
+        onClose={() => {
+          setIsConnectionsSheetOpen(false);
+          setConnectionsSheetSourceId(null);
+        }}
+        initialSourceNodeId={connectionsSheetSourceId || undefined}
+      />
+
+      {/* ═══ Mobile Canvas-to-Graph Bridge Sheet ═══ */}
+      <MobileCanvasBridgeSheet
+        isOpen={isCanvasBridgeOpen}
+        onClose={() => setIsCanvasBridgeOpen(false)}
+      />
     </div>
   );
 };
