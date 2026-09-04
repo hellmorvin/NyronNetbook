@@ -186,6 +186,8 @@ export const ObsidianGraphView: React.FC = () => {
   const hoveredNodeRef = useRef<SimNode | null>(null);
 
   const simulationRef = useRef<any>(null);
+  const existingCoordsRef = useRef<Map<string, { x: number; y: number; vx?: number; vy?: number; fx?: number | null; fy?: number | null }>>(new Map());
+  const hasAutoCenteredRef = useRef(false);
 
   const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
@@ -237,10 +239,18 @@ export const ObsidianGraphView: React.FC = () => {
         isLight
       );
 
-      // Spread initial positions across a large spiral so physics settles cleanly
-      const angle = (idx / Math.max(1, n)) * Math.PI * 6; // multi-loop spiral
-      const spreadRadius = 80 + idx * (260 / Math.max(1, n)) + (linkCount > 0 ? 0 : 60);
-      const jitter = (Math.random() - 0.5) * 40;
+      // Preserve live coordinates so nodes never jump back to a random spiral
+      const existing = existingCoordsRef.current.get(neu.id);
+      let posX = existing?.x;
+      let posY = existing?.y;
+      if (posX === undefined || posY === undefined) {
+        // Spread initial positions across a multi-loop spiral for new nodes
+        const angle = (idx / Math.max(1, n)) * Math.PI * 6;
+        const spreadRadius = 80 + idx * (260 / Math.max(1, n)) + (linkCount > 0 ? 0 : 60);
+        const jitter = (Math.random() - 0.5) * 40;
+        posX = Math.cos(angle) * spreadRadius + jitter;
+        posY = Math.sin(angle) * spreadRadius + jitter;
+      }
 
       return {
         id: neu.id,
@@ -251,8 +261,12 @@ export const ObsidianGraphView: React.FC = () => {
         tags: neu.tags || [],
         learningState: neu.learningState || 'new',
         linkCount,
-        x: Math.cos(angle) * spreadRadius + jitter,
-        y: Math.sin(angle) * spreadRadius + jitter,
+        x: posX,
+        y: posY,
+        vx: existing?.vx,
+        vy: existing?.vy,
+        fx: existing?.fx,
+        fy: existing?.fy,
       };
     });
 
@@ -270,17 +284,20 @@ export const ObsidianGraphView: React.FC = () => {
     return { simNodes: nodes, simLinks: links };
   }, [neurons, colorMode, currentAccent, isLight]);
 
-  // Auto-Center Graph on mount & resize
-  const centerGraphInViewport = useCallback(() => {
+  // Auto-Center Graph on mount (without overriding user pan/zoom position)
+  const centerGraphInViewport = useCallback((force = false) => {
     if (containerRef.current) {
       const width = containerRef.current.clientWidth || 800;
       const height = containerRef.current.clientHeight || 600;
-      transformRef.current = { x: width / 2, y: height / 2, k: 1.0 };
+      if (force || !hasAutoCenteredRef.current) {
+        transformRef.current = { x: width / 2, y: height / 2, k: 1.0 };
+        hasAutoCenteredRef.current = true;
+      }
     }
   }, []);
 
   useEffect(() => {
-    centerGraphInViewport();
+    centerGraphInViewport(false);
   }, [centerGraphInViewport]);
 
   // Keyboard shortcut listener for Esc
@@ -339,6 +356,22 @@ export const ObsidianGraphView: React.FC = () => {
       )
       .alphaDecay(0.018)
       .velocityDecay(0.38);
+
+    sim.on('tick', () => {
+      for (let i = 0; i < simNodes.length; i++) {
+        const node = simNodes[i]!;
+        if (node.x != null && node.y != null) {
+          existingCoordsRef.current.set(node.id, {
+            x: node.x,
+            y: node.y,
+            vx: node.vx,
+            vy: node.vy,
+            fx: node.fx,
+            fy: node.fy,
+          });
+        }
+      }
+    });
 
     simulationRef.current = sim;
 
@@ -433,8 +466,11 @@ export const ObsidianGraphView: React.FC = () => {
     const BG_COLOR        = isLight ? '#f1f5f9' : '#1e1e24';
 
     const render = () => {
-      const width  = containerRef.current?.clientWidth  || 800;
-      const height = containerRef.current?.clientHeight || 600;
+      const container = containerRef.current;
+      if (!container) return;
+      const width  = container.clientWidth;
+      const height = container.clientHeight;
+      if (width < 20 || height < 20) return;
       const dpr = window.devicePixelRatio || 1;
 
       if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
@@ -636,10 +672,11 @@ export const ObsidianGraphView: React.FC = () => {
       }
 
       // Dragging a node position
-      if (draggedNodeRef.current) {
+      if (draggedNodeRef.current && hasMovedSignificantly.current) {
         const { x, y } = getGraphCoords(e.clientX, e.clientY);
         draggedNodeRef.current.fx = x;
         draggedNodeRef.current.fy = y;
+        simulationRef.current?.alphaTarget(0.2).restart();
         return;
       }
 
@@ -667,10 +704,12 @@ export const ObsidianGraphView: React.FC = () => {
     const handleGlobalMouseUp = (e: MouseEvent) => {
       // Release dragged node
       if (draggedNodeRef.current) {
-        draggedNodeRef.current.fx = null;
-        draggedNodeRef.current.fy = null;
+        if (hasMovedSignificantly.current) {
+          draggedNodeRef.current.fx = null;
+          draggedNodeRef.current.fy = null;
+          simulationRef.current?.alphaTarget(0);
+        }
         draggedNodeRef.current = null;
-        simulationRef.current?.alphaTarget(0);
       }
       isPanningCanvasRef.current = false;
 
@@ -722,9 +761,6 @@ export const ObsidianGraphView: React.FC = () => {
     // 2. Normal Node Drag
     if (hitNode) {
       draggedNodeRef.current = hitNode;
-      hitNode.fx = hitNode.x;
-      hitNode.fy = hitNode.y;
-      simulationRef.current?.alphaTarget(0.3).restart();
       if (canvasRef.current) canvasRef.current.style.cursor = 'grabbing';
     } else {
       // 3. Canvas Panning

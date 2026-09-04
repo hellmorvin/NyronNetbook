@@ -630,6 +630,7 @@ interface BrainState {
       rateType?: 'hourly' | 'fixed';
       dayHours?: number;
       fullHours?: number;
+      startOffset?: number;
     }
   ) => void;
 
@@ -1010,14 +1011,12 @@ export const useBrainStore = create<BrainState>()(
 
       selectNeuron: (id) => {
         set({ activeNeuronId: id });
-        if (id) {
-          get().recordAccess(id);
-        }
       },
 
       openNote: (id: string) => {
         const neuron = get().neurons.find((n) => n.id === id);
         if (neuron) {
+          get().recordAccess(neuron.id);
           get().selectNeuron(neuron.id);
           get().openTab({ type: 'note', noteId: neuron.id, title: neuron.title });
         }
@@ -1889,6 +1888,7 @@ export const useBrainStore = create<BrainState>()(
         const fullHours = customConfig?.fullHours ?? settings.defaultFullHours;
 
         const cycleLen = cycleSequence.length;
+        const startOffset = Math.max(0, customConfig?.startOffset || 0);
         const generatedDates = new Set<string>();
         const newGeneratedShifts: WorkShift[] = [];
 
@@ -1901,7 +1901,8 @@ export const useBrainStore = create<BrainState>()(
 
           generatedDates.add(dateStr);
 
-          const type: ShiftType = cycleSequence[i % cycleLen] || 'off';
+          const seqIdx = (i + startOffset) % cycleLen;
+          const type: ShiftType = cycleSequence[seqIdx] || 'off';
           const isWork = type !== 'off' && type !== 'vacation';
           const hours = isWork
             ? type === 'full'

@@ -122,7 +122,13 @@ export const ObsidianNoteEditor: React.FC<ObsidianNoteEditorProps> = ({ noteId }
               <span>Визуальный</span>
             </button>
             <button
-              onClick={() => setViewMode('edit')}
+              onClick={() => {
+                if (viewMode === 'visual' && /<[a-z][\s\S]*>/i.test(neuron.content)) {
+                  const cleanMd = htmlToCleanMarkdown(neuron.content);
+                  handleContentChange(cleanMd);
+                }
+                setViewMode('edit');
+              }}
               className={`px-2.5 py-1 rounded-lg font-medium transition-colors flex items-center gap-1.5 ${
                 viewMode === 'edit'
                   ? 'bg-[#7c5cff] text-white shadow-md'
@@ -134,7 +140,13 @@ export const ObsidianNoteEditor: React.FC<ObsidianNoteEditorProps> = ({ noteId }
               <span>MD код</span>
             </button>
             <button
-              onClick={() => setViewMode('split')}
+              onClick={() => {
+                if (viewMode === 'visual' && /<[a-z][\s\S]*>/i.test(neuron.content)) {
+                  const cleanMd = htmlToCleanMarkdown(neuron.content);
+                  handleContentChange(cleanMd);
+                }
+                setViewMode('split');
+              }}
               className={`px-2.5 py-1 rounded-lg font-medium transition-colors flex items-center gap-1.5 ${
                 viewMode === 'split'
                   ? 'bg-[#7c5cff] text-white shadow-md'

@@ -202,9 +202,23 @@ export class MobileP2PSyncService {
       this.setPairingKey(payload.key);
     }
 
-    const candidateIps = payload.ips && payload.ips.length > 0
+    const rawCandidates = payload.ips && payload.ips.length > 0
       ? payload.ips
       : [this.status.remoteIp].filter(Boolean);
+
+    // Sort candidate IPs: Real Wi-Fi / Local Subnet (192.168.x, 10.x) FIRST,
+    // Virtual adapters (172.x, 169.254.x, 127.x) LAST
+    const candidateIps = Array.from(new Set(rawCandidates)).sort((a, b) => {
+      const isVirtA = a.startsWith('172.') || a.startsWith('169.254.') || a.startsWith('127.');
+      const isVirtB = b.startsWith('172.') || b.startsWith('169.254.') || b.startsWith('127.');
+      if (isVirtA && !isVirtB) return 1;
+      if (!isVirtA && isVirtB) return -1;
+      if (a.startsWith('192.168.') && !b.startsWith('192.168.')) return -1;
+      if (!a.startsWith('192.168.') && b.startsWith('192.168.')) return 1;
+      if (a.startsWith('10.') && !b.startsWith('10.')) return -1;
+      if (!a.startsWith('10.') && b.startsWith('10.')) return 1;
+      return 0;
+    });
 
     this.updateStatus({ state: 'connecting', errorMessage: undefined });
 

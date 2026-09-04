@@ -49,7 +49,7 @@ export const MobileDrawer: React.FC = () => {
         <div className="h-16 px-4 border-b border-[#232533] flex items-center justify-between bg-[#14151e] safe-top">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#8052ff] to-[#ec4899] flex items-center justify-center text-white font-bold text-sm shadow-md">
-              
+              🧠
             </div>
             <div>
               <h2 className="text-sm font-bold text-white leading-tight">Nyron</h2>

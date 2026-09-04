@@ -356,7 +356,12 @@ export const RichWordEditor: React.FC<RichWordEditorProps> = ({
 
   useEffect(() => {
     return () => {
-      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+      if (syncTimerRef.current) {
+        clearTimeout(syncTimerRef.current);
+        if (editorRef.current) {
+          onChangeRef.current(editorRef.current.innerHTML);
+        }
+      }
     };
   }, []);
 

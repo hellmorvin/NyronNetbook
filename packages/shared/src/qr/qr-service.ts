@@ -106,16 +106,47 @@ export function decodeSyncQRPayload(rawText: string): NyronQRSyncPayload | null 
   // If this is a direct vault payload, return null so caller handles vault
   if (isVaultQRPayload(trimmed)) return null;
 
-  // 1. Try standard JSON
+  // 1. Try standard JSON or any variant of P2P sync QR
   try {
     const obj = JSON.parse(trimmed);
-    if (obj && (obj.app === 'nyron' || obj.key !== undefined || obj.ips || obj.port)) {
+    if (
+      obj &&
+      (obj.app === 'nyron' ||
+        obj.type === 'nyron_p2p_sync' ||
+        obj.key !== undefined ||
+        obj.secret !== undefined ||
+        obj.pin !== undefined ||
+        obj.pairingKey !== undefined ||
+        obj.ips ||
+        obj.ip ||
+        obj.port)
+    ) {
+      const rawIps: string[] = Array.isArray(obj.ips)
+        ? obj.ips
+        : obj.ip
+        ? [obj.ip]
+        : [];
+
+      // Sort candidate IPs: Real Wi-Fi / Local Subnet (192.168.x, 10.x) FIRST,
+      // Virtual adapters (172.x, 169.254.x, 127.x) LAST
+      const sortedIps = Array.from(new Set(rawIps.filter(Boolean))).sort((a, b) => {
+        const isVirtA = a.startsWith('172.') || a.startsWith('169.254.') || a.startsWith('127.');
+        const isVirtB = b.startsWith('172.') || b.startsWith('169.254.') || b.startsWith('127.');
+        if (isVirtA && !isVirtB) return 1;
+        if (!isVirtA && isVirtB) return -1;
+        if (a.startsWith('192.168.') && !b.startsWith('192.168.')) return -1;
+        if (!a.startsWith('192.168.') && b.startsWith('192.168.')) return 1;
+        if (a.startsWith('10.') && !b.startsWith('10.')) return -1;
+        if (!a.startsWith('10.') && b.startsWith('10.')) return 1;
+        return 0;
+      });
+
       return {
         app: 'nyron',
         v: obj.v || '1.1.0',
-        key: obj.key || '',
+        key: (obj.key || obj.secret || obj.pin || obj.pairingKey || '').toString().trim(),
         port: Number(obj.port) || 49200,
-        ips: Array.isArray(obj.ips) ? obj.ips : (obj.ip ? [obj.ip] : []),
+        ips: sortedIps,
         hostname: obj.hostname,
         created: obj.created || Date.now(),
       };

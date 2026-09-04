@@ -77,14 +77,14 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ onOpenMoreMenu
 
   return (
     <nav className="shrink-0 bg-[#0d0e12]/95 backdrop-blur-xl border-t border-white/[0.08] select-none z-30 pb-[env(safe-area-inset-bottom,0px)]">
-      <div className="h-16 px-2 flex items-center justify-around">
+      <div className="h-16 px-1 xs:px-2 flex items-center justify-around">
         {navItems.map((item) => {
           const active = item.isActive;
           return (
             <button
               key={item.id}
               onClick={item.onClick}
-              className={`flex flex-col items-center justify-center flex-1 py-1.5 px-1 rounded-xl transition-all duration-150 active:scale-95 relative ${
+              className={`flex flex-col items-center justify-center flex-1 py-1 px-0.5 rounded-xl transition-all duration-150 active:scale-95 relative min-w-0 ${
                 active
                   ? 'text-[#7c5cff]'
                   : 'text-[#64748b] hover:text-[#94a3b8] active:text-white'
@@ -92,17 +92,17 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ onOpenMoreMenu
             >
               {/* Active Glow Pill */}
               {active && (
-                <span className="absolute -top-1 w-8 h-1 bg-[#7c5cff] rounded-full shadow-[0_0_8px_#7c5cff]" />
+                <span className="absolute -top-1 w-7 xs:w-8 h-1 bg-[#7c5cff] rounded-full shadow-[0_0_8px_#7c5cff]" />
               )}
               <div
-                className={`p-1 rounded-lg transition-transform ${
-                  active ? 'scale-110' : ''
+                className={`p-0.5 xs:p-1 rounded-lg transition-transform ${
+                  active ? 'scale-105 xs:scale-110' : ''
                 }`}
               >
                 {item.icon}
               </div>
               <span
-                className={`text-[10px] font-semibold tracking-tight transition-colors ${
+                className={`text-[9px] xs:text-[10px] font-semibold tracking-tight transition-colors truncate max-w-full leading-none mt-0.5 ${
                   active ? 'text-[#7c5cff]' : 'text-[#64748b]'
                 }`}
               >

@@ -214,11 +214,14 @@ function getAllNetworkInterfaces() {
           lower.includes('hyper-v') ||
           lower.includes('tailscale') ||
           lower.includes('zerotier') ||
-          lower.includes('docker')
+          lower.includes('docker') ||
+          lower.includes('bluetooth') ||
+          net.address.startsWith('172.') ||
+          net.address.startsWith('169.254.')
         ) {
           type = 'virtual';
           isVirtual = true;
-          label = `${name} (Виртуальный адаптер)`;
+          label = `${name} (Виртуальный/служебный адаптер)`;
         } else if (
           lower.includes('wi-fi') ||
           lower.includes('wifi') ||
@@ -253,7 +256,7 @@ function getAllNetworkInterfaces() {
   }
 
   // Priority sorting: Wi-Fi (1), Hotspot (2), Ethernet (3), Other (4), Virtual (5)
-  // Also prioritize common home subnet 192.168.x.x over 172.x.x.x
+  // Also prioritize common home subnet 192.168.x.x and 10.x.x.x over 172.x.x.x
   list.sort((a, b) => {
     const priority = { wifi: 1, hotspot: 2, ethernet: 3, other: 4, virtual: 5 };
     const pA = priority[a.type] || 4;
@@ -261,6 +264,8 @@ function getAllNetworkInterfaces() {
     if (pA !== pB) return pA - pB;
     if (a.address.startsWith('192.168.') && !b.address.startsWith('192.168.')) return -1;
     if (!a.address.startsWith('192.168.') && b.address.startsWith('192.168.')) return 1;
+    if (a.address.startsWith('10.') && !b.address.startsWith('10.')) return -1;
+    if (!a.address.startsWith('10.') && b.address.startsWith('10.')) return 1;
     return 0;
   });
 
@@ -269,11 +274,17 @@ function getAllNetworkInterfaces() {
 
 function getLocalIpAddress() {
   const list = getAllNetworkInterfaces();
-  const nonVirtual = list.find((i) => !i.isVirtual && (i.type === 'wifi' || i.type === 'hotspot' || i.type === 'ethernet'));
-  if (nonVirtual) return nonVirtual.address;
-  const anyNonVirtual = list.find((i) => !i.isVirtual);
+  const realWifiOrLan = list.find((i) => !i.isVirtual && !i.address.startsWith('172.') && !i.address.startsWith('169.254.') && (i.type === 'wifi' || i.type === 'hotspot' || i.type === 'ethernet'));
+  if (realWifiOrLan) return realWifiOrLan.address;
+  const any192 = list.find((i) => i.address.startsWith('192.168.'));
+  if (any192) return any192.address;
+  const any10 = list.find((i) => i.address.startsWith('10.'));
+  if (any10) return any10.address;
+  const anyNonVirtual = list.find((i) => !i.isVirtual && !i.address.startsWith('172.') && !i.address.startsWith('169.254.'));
   if (anyNonVirtual) return anyNonVirtual.address;
   if (list.length > 0) return list[0].address;
+  return '127.0.0.1';
+}
   return '127.0.0.1';
 }
 

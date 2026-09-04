@@ -409,7 +409,17 @@ export const ObsidianNoteEditor: React.FC<ObsidianNoteEditorProps> = ({ noteId }
                   </button>
 
                   <button
-                    onClick={() => setViewMode(viewMode === 'markdown' ? 'visual' : 'markdown')}
+                    onClick={() => {
+                      if (viewMode === 'markdown') {
+                        setViewMode('visual');
+                      } else {
+                        if (/<[a-z][\s\S]*>/i.test(neuron.content)) {
+                          const cleanMd = htmlToCleanMarkdown(neuron.content);
+                          handleContentChange(cleanMd);
+                        }
+                        setViewMode('markdown');
+                      }
+                    }}
                     className="w-full px-3 py-2 rounded-xl text-left text-xs font-semibold text-white hover:bg-white/[0.08] flex items-center gap-2 transition-colors"
                   >
                     <Code size={14} className="text-[#a78bfa]" />
@@ -668,13 +678,26 @@ export const ObsidianNoteEditor: React.FC<ObsidianNoteEditorProps> = ({ noteId }
           </div>
         )}
 
-        {/* ══════════ MODE 3: PREVIEW (INTERACTIVE MARKDOWN) ══════════ */}
+        {/* ══════════ MODE 3: PREVIEW (INTERACTIVE MARKDOWN & RICH HTML) ══════════ */}
         {viewMode === 'preview' && (
           <div className="w-full min-h-[55vh] space-y-3 text-sm leading-relaxed text-[#e2e8f0]">
             <h1 className="text-2xl font-black text-white py-1 border-b border-white/[0.08]">
               {neuron.title || 'Без названия'}
             </h1>
-            {neuron.content.trim() ? (
+            {/<[a-z][\s\S]*>/i.test(neuron.content) ? (
+              <div
+                className="rich-note-preview text-sm leading-relaxed text-[#e2e8f0] space-y-2 select-text [&_h1]:text-2xl [&_h1]:font-black [&_h1]:text-white [&_h1]:py-1 [&_h1]:border-b [&_h1]:border-white/[0.08] [&_h2]:text-xl [&_h2]:font-extrabold [&_h2]:text-[#a78bfa] [&_h2]:mt-3 [&_h3]:text-lg [&_h3]:font-bold [&_h3]:text-[#38bdf8] [&_p]:my-1.5 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_table]:w-full [&_table]:border-collapse [&_th]:border [&_th]:border-white/20 [&_th]:p-2 [&_th]:bg-white/[0.04] [&_td]:border [&_td]:border-white/10 [&_td]:p-2 [&_blockquote]:border-l-4 [&_blockquote]:border-[#7c5cff] [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:text-[#94a3b8] [&_mark]:bg-amber-400/25 [&_mark]:text-amber-200 [&_code]:bg-white/[0.08] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:font-mono"
+                dangerouslySetInnerHTML={{ __html: neuron.content }}
+                onClick={(e) => {
+                  const target = e.target as HTMLElement;
+                  const wikiLink = target.closest('.wikilink-node') || target.closest('[data-link]');
+                  if (wikiLink) {
+                    const link = wikiLink.getAttribute('data-link') || wikiLink.textContent?.replace(/^\[\[|\]\]$/g, '');
+                    if (link) handleWikiLinkClick(link.trim());
+                  }
+                }}
+              />
+            ) : neuron.content.trim() ? (
               neuron.content.split('\n').map((line, idx) => {
                 // Headings
                 if (line.startsWith('# ')) {

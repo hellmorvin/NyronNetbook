@@ -87,8 +87,16 @@ export const SyncModal: React.FC = () => {
           if (text) {
             const trimmed = text.trim();
             if (
-              (trimmed.startsWith('{') && (trimmed.includes('"app"') || trimmed.includes('"ips"') || trimmed.includes('"neurons"'))) ||
-              trimmed.startsWith('nyron://')
+              (trimmed.startsWith('{') &&
+                (trimmed.includes('"app"') ||
+                  trimmed.includes('"ips"') ||
+                  trimmed.includes('"ip"') ||
+                  trimmed.includes('"neurons"') ||
+                  trimmed.includes('nyron') ||
+                  trimmed.includes('"secret"') ||
+                  trimmed.includes('"port"'))) ||
+              trimmed.startsWith('nyron://') ||
+              trimmed.startsWith('nyron-vault:')
             ) {
               setClipboardData(trimmed);
             }
@@ -276,7 +284,10 @@ export const SyncModal: React.FC = () => {
     }
 
     if (payload.ips && payload.ips.length > 0) {
-      setRemoteHost(payload.ips[0]);
+      const nonVirt = payload.ips.find(
+        (ip) => !ip.startsWith('172.') && !ip.startsWith('169.254.') && !ip.startsWith('127.')
+      );
+      setRemoteHost(nonVirt || payload.ips[0]);
     }
 
     setImportStatus('⚡ Подключение по QR-коду и быстрая синхронизация...');

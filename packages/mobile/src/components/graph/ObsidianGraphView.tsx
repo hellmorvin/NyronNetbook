@@ -208,6 +208,10 @@ export const ObsidianGraphView: React.FC = () => {
   const textWidthCacheRef = useRef<Map<string, number>>(new Map());
   const requestRenderRef = useRef<(() => void) | null>(null);
   const lastTouchEndTimeRef = useRef<number>(0);
+  const lastTappedNodeIdRef = useRef<string | null>(null);
+  const lastTapTimeRef = useRef<number>(0);
+  const existingCoordsRef = useRef<Map<string, { x: number; y: number; vx?: number; vy?: number; fx?: number | null; fy?: number | null }>>(new Map());
+  const hasAutoCenteredRef = useRef(false);
 
   // Touch & Pinch-to-zoom tracking ref
   const touchStateRef = useRef<{
@@ -280,10 +284,18 @@ export const ObsidianGraphView: React.FC = () => {
         isLight
       );
 
-      // Spread initial positions across a large spiral so physics settles cleanly
-      const angle = (idx / Math.max(1, n)) * Math.PI * 6; // multi-loop spiral
-      const spreadRadius = 80 + idx * (260 / Math.max(1, n)) + (linkCount > 0 ? 0 : 60);
-      const jitter = (Math.random() - 0.5) * 40;
+      // Preserve live coordinates so nodes never jump back to a random spiral
+      const existing = existingCoordsRef.current.get(neu.id);
+      let posX = existing?.x;
+      let posY = existing?.y;
+      if (posX === undefined || posY === undefined) {
+        // Spread initial positions across a multi-loop spiral for new nodes
+        const angle = (idx / Math.max(1, n)) * Math.PI * 6;
+        const spreadRadius = 80 + idx * (260 / Math.max(1, n)) + (linkCount > 0 ? 0 : 60);
+        const jitter = (Math.random() - 0.5) * 40;
+        posX = Math.cos(angle) * spreadRadius + jitter;
+        posY = Math.sin(angle) * spreadRadius + jitter;
+      }
 
       return {
         id: neu.id,
@@ -294,8 +306,12 @@ export const ObsidianGraphView: React.FC = () => {
         tags: neu.tags || [],
         learningState: neu.learningState || 'new',
         linkCount,
-        x: Math.cos(angle) * spreadRadius + jitter,
-        y: Math.sin(angle) * spreadRadius + jitter,
+        x: posX,
+        y: posY,
+        vx: existing?.vx,
+        vy: existing?.vy,
+        fx: existing?.fx,
+        fy: existing?.fy,
       };
     });
 
@@ -313,21 +329,24 @@ export const ObsidianGraphView: React.FC = () => {
     return { simNodes: nodes, simLinks: links };
   }, [neurons, colorMode, currentAccent, isLight]);
 
-  // Auto-Center Graph on mount & resize
-  const centerGraphInViewport = useCallback(() => {
+  // Auto-Center Graph on initial mount (without overriding user pan/zoom position)
+  const centerGraphInViewport = useCallback((force = false) => {
     if (containerRef.current) {
       const width = containerRef.current.clientWidth || 800;
       const height = containerRef.current.clientHeight || 600;
-      transformRef.current = { x: width / 2, y: height / 2, k: 1.0 };
+      if (force || !hasAutoCenteredRef.current) {
+        transformRef.current = { x: width / 2, y: height / 2, k: 1.0 };
+        hasAutoCenteredRef.current = true;
+      }
       requestRenderRef.current?.();
     }
   }, []);
 
   useEffect(() => {
-    centerGraphInViewport();
+    centerGraphInViewport(false);
   }, [centerGraphInViewport]);
 
-  // Tab activation watcher: re-center and render when user switches back to Graph
+  // Tab activation watcher: re-render cleanly without resetting camera zoom/pan
   const isGraphTab = useMemo(() => {
     const active = tabs.find((t) => t.id === activeTabId);
     return active?.type === 'graph';
@@ -335,8 +354,25 @@ export const ObsidianGraphView: React.FC = () => {
 
   useEffect(() => {
     if (isGraphTab) {
+      const container = containerRef.current;
+      const canvas = canvasRef.current;
+      if (container && canvas) {
+        const w = container.clientWidth;
+        const h = container.clientHeight;
+        if (w > 50 && h > 50) {
+          const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+          if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
+            canvas.width = w * dpr;
+            canvas.height = h * dpr;
+          }
+          if (!hasAutoCenteredRef.current) {
+            transformRef.current = { x: w / 2, y: h / 2, k: 1.0 };
+            hasAutoCenteredRef.current = true;
+          }
+        }
+      }
       const timer = setTimeout(() => {
-        centerGraphInViewport();
+        centerGraphInViewport(false);
         requestRenderRef.current?.();
       }, 50);
       return () => clearTimeout(timer);
@@ -428,6 +464,19 @@ export const ObsidianGraphView: React.FC = () => {
       .velocityDecay(0.38);
 
     sim.on('tick', () => {
+      for (let i = 0; i < simNodes.length; i++) {
+        const node = simNodes[i]!;
+        if (node.x != null && node.y != null) {
+          existingCoordsRef.current.set(node.id, {
+            x: node.x,
+            y: node.y,
+            vx: node.vx,
+            vy: node.vy,
+            fx: node.fx,
+            fy: node.fy,
+          });
+        }
+      }
       requestRenderRef.current?.();
     });
 
@@ -525,8 +574,11 @@ export const ObsidianGraphView: React.FC = () => {
     const BG_COLOR        = isLight ? '#f1f5f9' : '#1e1e24';
 
     const render = () => {
-      const width  = containerRef.current?.clientWidth  || 800;
-      const height = containerRef.current?.clientHeight || 600;
+      const container = containerRef.current;
+      if (!container || !isGraphTab) return;
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      if (width < 20 || height < 20) return;
       const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
 
       if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
@@ -782,10 +834,11 @@ export const ObsidianGraphView: React.FC = () => {
       }
 
       // Dragging a node position
-      if (draggedNodeRef.current) {
+      if (draggedNodeRef.current && hasMovedSignificantly.current) {
         const { x, y } = getGraphCoords(e.clientX, e.clientY);
         draggedNodeRef.current.fx = x;
         draggedNodeRef.current.fy = y;
+        simulationRef.current?.alphaTarget(0.2).restart();
         requestRenderRef.current?.();
         return;
       }
@@ -815,10 +868,12 @@ export const ObsidianGraphView: React.FC = () => {
     const handleGlobalMouseUp = (e: MouseEvent) => {
       // Release dragged node
       if (draggedNodeRef.current) {
-        draggedNodeRef.current.fx = null;
-        draggedNodeRef.current.fy = null;
+        if (hasMovedSignificantly.current) {
+          draggedNodeRef.current.fx = null;
+          draggedNodeRef.current.fy = null;
+          simulationRef.current?.alphaTarget(0);
+        }
         draggedNodeRef.current = null;
-        simulationRef.current?.alphaTarget(0);
       }
       isPanningCanvasRef.current = false;
 
@@ -871,9 +926,6 @@ export const ObsidianGraphView: React.FC = () => {
     // 2. Normal Node Drag
     if (hitNode) {
       draggedNodeRef.current = hitNode;
-      hitNode.fx = hitNode.x;
-      hitNode.fy = hitNode.y;
-      simulationRef.current?.alphaTarget(0.3).restart();
       if (canvasRef.current) canvasRef.current.style.cursor = 'grabbing';
     } else {
       // 3. Canvas Panning
@@ -945,9 +997,6 @@ export const ObsidianGraphView: React.FC = () => {
         const hit = findNodeAt(gx, gy, 26);
         if (hit) {
           activeTouchNode = hit;
-          hit.fx = hit.x;
-          hit.fy = hit.y;
-          simulationRef.current?.alphaTarget(0.3).restart();
         } else {
           isPanning = true;
           panStartX = t.clientX - tr.x;
@@ -986,23 +1035,24 @@ export const ObsidianGraphView: React.FC = () => {
 
       if (e.touches.length === 1 && !isPinching) {
         const t = e.touches[0]!;
-        const dx = t.clientX - startTouchX;
-        const dy = t.clientY - startTouchY;
-        if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+        const dist = Math.hypot(t.clientX - startTouchX, t.clientY - startTouchY);
+        if (dist >= 14) {
           hasMoved = true;
         }
 
         if (activeTouchNode) {
-          const rect = canvas.getBoundingClientRect();
-          const tr = transformRef.current;
-          activeTouchNode.fx = (t.clientX - rect.left - tr.x) / tr.k;
-          activeTouchNode.fy = (t.clientY - rect.top - tr.y) / tr.k;
-          simulationRef.current?.alphaTarget(0.2).restart();
-          requestRenderRef.current?.();
+          if (hasMoved) {
+            const rect = canvas.getBoundingClientRect();
+            const tr = transformRef.current;
+            activeTouchNode.fx = (t.clientX - rect.left - tr.x) / tr.k;
+            activeTouchNode.fy = (t.clientY - rect.top - tr.y) / tr.k;
+            simulationRef.current?.alphaTarget(0.15).restart();
+            requestRenderRef.current?.();
+          }
           return;
         }
 
-        if (isPanning) {
+        if (isPanning && hasMoved) {
           transformRef.current.x = t.clientX - panStartX;
           transformRef.current.y = t.clientY - panStartY;
           requestRenderRef.current?.();
@@ -1017,21 +1067,23 @@ export const ObsidianGraphView: React.FC = () => {
       }
 
       if (activeTouchNode) {
-        activeTouchNode.fx = null;
-        activeTouchNode.fy = null;
+        if (hasMoved) {
+          activeTouchNode.fx = null;
+          activeTouchNode.fy = null;
+          simulationRef.current?.alphaTarget(0);
+        }
         activeTouchNode = null;
-        simulationRef.current?.alphaTarget(0);
       }
       isPanning = false;
 
       lastTouchEndTimeRef.current = Date.now();
       const elapsed = Date.now() - touchStartTime;
-      if (!hasMoved && elapsed < 350) {
+      if (!hasMoved && elapsed < 550) {
         const rect = canvas.getBoundingClientRect();
         const tr = transformRef.current;
         const gx = (startTouchX - rect.left - tr.x) / tr.k;
         const gy = (startTouchY - rect.top - tr.y) / tr.k;
-        const hit = findNodeAt(gx, gy, 26);
+        const hit = findNodeAt(gx, gy, 28);
 
         // 1. Linking Mode active (toolbar or node action sheet)
         if (isLinkingModeRef.current) {
@@ -1058,12 +1110,24 @@ export const ObsidianGraphView: React.FC = () => {
           return;
         }
 
-        // 2. Normal Tap: select node and open sleek mobile action card (NO abrupt tab jumping!)
+        // 2. Double-tap on the same node opens the note directly
+        const now = Date.now();
+        if (hit && lastTappedNodeIdRef.current === hit.id && now - lastTapTimeRef.current < 400) {
+          openNote(hit.id);
+          setSelectedMobileNode(null);
+          lastTappedNodeIdRef.current = null;
+          return;
+        }
+
+        // 3. Normal Tap: select node and open sleek mobile action card (NO abrupt tab jumping!)
         if (hit) {
+          lastTappedNodeIdRef.current = hit.id;
+          lastTapTimeRef.current = now;
           selectNeuron(hit.id);
           setSelectedMobileNode(hit);
           requestRenderRef.current?.();
         } else {
+          lastTappedNodeIdRef.current = null;
           selectNeuron(null);
           setSelectedMobileNode(null);
           requestRenderRef.current?.();

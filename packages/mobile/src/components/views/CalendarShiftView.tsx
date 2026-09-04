@@ -131,6 +131,18 @@ const CYCLE_PRESET_TEMPLATES = [
     sequence: ['day', 'day', 'off', 'off'] as ShiftType[],
   },
   {
+    id: '2_2_night',
+    name: '2 / 2 Ночные',
+    desc: '4 дня: 2 ночные смены ➔ 2 выходных',
+    sequence: ['night', 'night', 'off', 'off'] as ShiftType[],
+  },
+  {
+    id: '4_4',
+    name: '4 / 4 Дневные',
+    desc: '8 дней: 4 дня дневных ➔ 4 выходных',
+    sequence: ['day', 'day', 'day', 'day', 'off', 'off', 'off', 'off'] as ShiftType[],
+  },
+  {
     id: '3_3_day',
     name: '3 / 3 Дневные',
     desc: '6 дней: 3 дня дневных ➔ 3 выходных',
@@ -278,6 +290,7 @@ export const CalendarShiftView: React.FC = () => {
   );
   const [genDayHours, setGenDayHours] = useState<number>(() => shiftSettings.defaultDayHours);
   const [genFullHours, setGenFullHours] = useState<number>(() => shiftSettings.defaultFullHours);
+  const [genCycleOffset, setGenCycleOffset] = useState<number>(0);
 
   // Granular Bulk Cleanup Modal State
   const [cleanupPeriodType, setCleanupPeriodType] = useState<'current_month' | 'custom_range'>('current_month');
@@ -588,12 +601,13 @@ export const CalendarShiftView: React.FC = () => {
   // Switch Schedule Preset
   const handleSelectPreset = (preset: typeof CYCLE_PRESET_TEMPLATES[0]) => {
     setSelectedPresetId(preset.id);
+    setGenCycleOffset(0);
     if (preset.id !== 'custom') {
       setActiveSequence([...preset.sequence]);
     }
   };
 
-  // Live calculation of the schedule generator preview using custom rate in modal
+  // Live calculation of the schedule generator preview using custom rate and cycle offset
   const generatorPreview = useMemo(() => {
     if (!activeSequence || activeSequence.length === 0) return null;
     const cycleLen = activeSequence.length;
@@ -602,7 +616,7 @@ export const CalendarShiftView: React.FC = () => {
     let totalHours = 0;
 
     for (let i = 0; i < genDaysCount; i++) {
-      const type = activeSequence[i % cycleLen]!;
+      const type = activeSequence[(i + genCycleOffset) % cycleLen]!;
       if (type !== 'off' && type !== 'vacation') {
         workDays++;
         totalHours += type === 'full' ? genFullHours : genDayHours;
@@ -619,7 +633,27 @@ export const CalendarShiftView: React.FC = () => {
       totalHours,
       projectedEarnings,
     };
-  }, [activeSequence, genDaysCount, genRate, genRateType, genDayHours, genFullHours]);
+  }, [activeSequence, genCycleOffset, genDaysCount, genRate, genRateType, genDayHours, genFullHours]);
+
+  // First 8 days preview strip for interactive timeline visual feedback
+  const previewDays = useMemo(() => {
+    if (!activeSequence || activeSequence.length === 0) return [];
+    const [y, m, d] = genStartDate.split('-').map(Number);
+    const start = new Date(y || new Date().getFullYear(), (m || 1) - 1, d || 1, 12, 0, 0);
+    const cycleLen = activeSequence.length;
+    const days = [];
+    const count = Math.min(8, genDaysCount);
+    for (let i = 0; i < count; i++) {
+      const dateObj = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i, 12, 0, 0);
+      const type = activeSequence[(i + genCycleOffset) % cycleLen] || 'off';
+      days.push({
+        dateStr: `${dateObj.getDate()} ${MONTH_NAMES[dateObj.getMonth()]?.slice(0, 3)}`,
+        weekday: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'][dateObj.getDay()],
+        type,
+      });
+    }
+    return days;
+  }, [genStartDate, activeSequence, genCycleOffset, genDaysCount]);
 
   // Execute Schedule Generation with custom rate configuration
   const handleGenerateSchedule = () => {
@@ -633,6 +667,7 @@ export const CalendarShiftView: React.FC = () => {
       rateType: genRateType,
       dayHours: genDayHours,
       fullHours: genFullHours,
+      startOffset: genCycleOffset,
     });
 
     setIsScheduleGeneratorOpen(false);
@@ -1291,7 +1326,7 @@ export const CalendarShiftView: React.FC = () => {
             })}
           </div>
 
-          {/* 4 Big 1-Tap Quick Action Cards (Identical sleek design to Finances from Image 3) */}
+          {/* 4 Big 1-Tap Quick Action Cards (Pixel-perfect matching Finances from Image 3) */}
           <div className="grid grid-cols-4 gap-2 mt-3">
             {/* 1. + Смена */}
             <button
@@ -1299,9 +1334,9 @@ export const CalendarShiftView: React.FC = () => {
                 setMobileAddTab('shift');
                 setIsMobileAddModalOpen(true);
               }}
-              className="flex flex-col items-center justify-center p-2 rounded-2xl bg-[#10b981]/15 border border-[#10b981]/25 hover:bg-[#10b981]/25 transition-all active:scale-95 text-center shadow-sm"
+              className="flex flex-col items-center justify-center py-2.5 px-2 rounded-2xl bg-[#09281e] border border-[#15543c] hover:bg-[#0e3b2c] transition-all active:scale-95 text-center shadow-lg group"
             >
-              <div className="w-8 h-8 rounded-full bg-[#10b981]/25 text-[#10b981] flex items-center justify-center mb-1">
+              <div className="w-8 h-8 rounded-full bg-[#10b981]/25 text-[#10b981] flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
                 <Briefcase size={16} strokeWidth={2.5} />
               </div>
               <span className="text-[11px] font-bold text-white leading-tight">+ Смена</span>
@@ -1313,9 +1348,9 @@ export const CalendarShiftView: React.FC = () => {
                 setMobileAddTab('generator');
                 setIsMobileAddModalOpen(true);
               }}
-              className="flex flex-col items-center justify-center p-2 rounded-2xl bg-[#8b5cf6]/15 border border-[#8b5cf6]/25 hover:bg-[#8b5cf6]/25 transition-all active:scale-95 text-center shadow-sm"
+              className="flex flex-col items-center justify-center py-2.5 px-2 rounded-2xl bg-[#231738] border border-[#482d7a] hover:bg-[#311f4e] transition-all active:scale-95 text-center shadow-lg group"
             >
-              <div className="w-8 h-8 rounded-full bg-[#8b5cf6]/25 text-[#8b5cf6] flex items-center justify-center mb-1">
+              <div className="w-8 h-8 rounded-full bg-[#8b5cf6]/25 text-[#8b5cf6] flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
                 <RotateCcw size={16} strokeWidth={2.5} />
               </div>
               <span className="text-[11px] font-bold text-white leading-tight">🔄 Цикл</span>
@@ -1324,9 +1359,9 @@ export const CalendarShiftView: React.FC = () => {
             {/* 3. ⚙️ Ставки */}
             <button
               onClick={() => setIsSettingsOpen(true)}
-              className="flex flex-col items-center justify-center p-2 rounded-2xl bg-[#f59e0b]/15 border border-[#f59e0b]/25 hover:bg-[#f59e0b]/25 transition-all active:scale-95 text-center shadow-sm"
+              className="flex flex-col items-center justify-center py-2.5 px-2 rounded-2xl bg-[#2d1f08] border border-[#5e4110] hover:bg-[#3d2b0b] transition-all active:scale-95 text-center shadow-lg group"
             >
-              <div className="w-8 h-8 rounded-full bg-[#f59e0b]/25 text-[#f59e0b] flex items-center justify-center mb-1">
+              <div className="w-8 h-8 rounded-full bg-[#f59e0b]/25 text-[#f59e0b] flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
                 <Sliders size={16} strokeWidth={2.5} />
               </div>
               <span className="text-[11px] font-bold text-white leading-tight">⚙️ Ставки</span>
@@ -1335,9 +1370,9 @@ export const CalendarShiftView: React.FC = () => {
             {/* 4. 📊 Отчет */}
             <button
               onClick={() => setIsReportModalOpen(true)}
-              className="flex flex-col items-center justify-center p-2 rounded-2xl bg-[#38bdf8]/15 border border-[#38bdf8]/25 hover:bg-[#38bdf8]/25 transition-all active:scale-95 text-center shadow-sm"
+              className="flex flex-col items-center justify-center py-2.5 px-2 rounded-2xl bg-[#0f2233] border border-[#1d4a6e] hover:bg-[#16314a] transition-all active:scale-95 text-center shadow-lg group"
             >
-              <div className="w-8 h-8 rounded-full bg-[#38bdf8]/25 text-[#38bdf8] flex items-center justify-center mb-1">
+              <div className="w-8 h-8 rounded-full bg-[#38bdf8]/25 text-[#38bdf8] flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
                 <PieChart size={16} strokeWidth={2.5} />
               </div>
               <span className="text-[11px] font-bold text-white leading-tight">📊 Отчет</span>
@@ -2678,6 +2713,72 @@ export const CalendarShiftView: React.FC = () => {
               </div>
             </div>
 
+            {/* Start Phase / Cycle Day Selector (Crucial for shift cycles!) */}
+            {activeSequence.length > 1 && (
+              <div className="p-3 bg-[#111218] border border-white/[0.08] rounded-2xl space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-white block">
+                    5. С какого дня цикла начать отсчет?
+                  </label>
+                  <span className="text-[10px] text-[#8b5cf6] font-semibold">
+                    Старт: {genCycleOffset + 1}-й день ({SHIFT_TYPE_CONFIG[activeSequence[genCycleOffset] || 'day'].label})
+                  </span>
+                </div>
+                <p className="text-[11px] text-[#94a3b8]">
+                  Если на выбранную дату начала выпадает не 1-й день цикла — нажмите нужный день:
+                </p>
+                <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                  {activeSequence.map((type, idx) => {
+                    const cfg = SHIFT_TYPE_CONFIG[type];
+                    const isChosen = genCycleOffset === idx;
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setGenCycleOffset(idx)}
+                        className={`px-2.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 ${
+                          isChosen
+                            ? 'border-[#8b5cf6] bg-[#8b5cf6]/30 text-white ring-2 ring-[#8b5cf6] shadow-md shadow-purple-500/20'
+                            : 'border-white/[0.08] bg-[#171822] text-[#94a3b8] hover:text-white'
+                        }`}
+                      >
+                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: cfg.color }} />
+                        <span>{idx + 1}-й: {cfg.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Live Interactive Timeline Strip Preview */}
+            {previewDays.length > 0 && (
+              <div className="space-y-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#94a3b8] block">
+                  Предпросмотр графика (первые {previewDays.length} дн.):
+                </span>
+                <div className="flex items-center gap-1.5 overflow-x-auto p-1.5 bg-[#101117] border border-white/[0.08] rounded-xl no-scrollbar">
+                  {previewDays.map((pd, pidx) => {
+                    const cfg = SHIFT_TYPE_CONFIG[pd.type];
+                    return (
+                      <div
+                        key={pidx}
+                        className="flex flex-col items-center justify-center p-1.5 rounded-lg border shrink-0 min-w-[58px] text-center"
+                        style={{ backgroundColor: cfg.bg, borderColor: cfg.border }}
+                      >
+                        <span className="text-[9px] font-bold text-[#94a3b8]">{pd.weekday}</span>
+                        <span className="text-[10px] font-extrabold text-white">{pd.dateStr}</span>
+                        <div className="mt-1 flex items-center gap-0.5" style={{ color: cfg.color }}>
+                          <cfg.icon size={11} />
+                          <span className="text-[9px] font-bold">{cfg.shortLabel}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Live Financial & Workload Preview Box */}
             {generatorPreview && (
               <div className="p-3.5 rounded-2xl bg-[#171822] border border-white/[0.08] grid grid-cols-4 gap-2 text-center shadow-inner">
@@ -2738,34 +2839,97 @@ export const CalendarShiftView: React.FC = () => {
             </div>
 
             <div className="space-y-3 text-xs">
+              {/* Default Rate Type */}
               <div>
-                <label className="block text-[#94a3b8] mb-1 font-medium">Ставка в час (₽/ч)</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={shiftSettings.defaultHourlyRate === 0 ? '' : String(shiftSettings.defaultHourlyRate)}
-                  onChange={(e) => {
-                    const clean = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
-                    updateShiftSettings({ defaultHourlyRate: clean === '' ? 0 : Number(clean) });
-                  }}
-                  placeholder="0"
-                  className="w-full bg-[#161720] border border-white/[0.08] rounded-xl p-2 text-white font-mono focus:outline-none focus:border-[#8b5cf6]"
-                />
+                <label className="block text-[#94a3b8] mb-1 font-semibold text-[11px]">Основной тип ставки:</label>
+                <div className="grid grid-cols-2 gap-1.5 p-1 bg-[#101117] rounded-xl border border-white/[0.08]">
+                  <button
+                    type="button"
+                    onClick={() => updateShiftSettings({ defaultRateType: 'hourly' })}
+                    className={`py-1.5 rounded-lg font-bold text-xs transition-all ${
+                      shiftSettings.defaultRateType === 'hourly'
+                        ? 'bg-[#8b5cf6] text-white shadow'
+                        : 'text-[#94a3b8] hover:text-white'
+                    }`}
+                  >
+                    Почасовая (₽/ч)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateShiftSettings({ defaultRateType: 'fixed' })}
+                    className={`py-1.5 rounded-lg font-bold text-xs transition-all ${
+                      shiftSettings.defaultRateType === 'fixed'
+                        ? 'bg-[#8b5cf6] text-white shadow'
+                        : 'text-[#94a3b8] hover:text-white'
+                    }`}
+                  >
+                    За смену (₽/см)
+                  </button>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-[#94a3b8] mb-1 font-medium">Ставка за смену (₽)</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={shiftSettings.defaultFixedRate === 0 ? '' : String(shiftSettings.defaultFixedRate)}
-                  onChange={(e) => {
-                    const clean = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
-                    updateShiftSettings({ defaultFixedRate: clean === '' ? 0 : Number(clean) });
-                  }}
-                  placeholder="0"
-                  className="w-full bg-[#161720] border border-white/[0.08] rounded-xl p-2 text-white font-mono focus:outline-none focus:border-[#8b5cf6]"
-                />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[#94a3b8] mb-1 font-medium">Ставка в час (₽/ч)</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={shiftSettings.defaultHourlyRate === 0 ? '' : String(shiftSettings.defaultHourlyRate)}
+                    onChange={(e) => {
+                      const clean = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+                      updateShiftSettings({ defaultHourlyRate: clean === '' ? 0 : Number(clean) });
+                    }}
+                    placeholder="0"
+                    className="w-full bg-[#161720] border border-white/[0.08] rounded-xl p-2 text-white font-mono focus:outline-none focus:border-[#8b5cf6]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[#94a3b8] mb-1 font-medium">Ставка за смену (₽)</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={shiftSettings.defaultFixedRate === 0 ? '' : String(shiftSettings.defaultFixedRate)}
+                    onChange={(e) => {
+                      const clean = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+                      updateShiftSettings({ defaultFixedRate: clean === '' ? 0 : Number(clean) });
+                    }}
+                    placeholder="0"
+                    className="w-full bg-[#161720] border border-white/[0.08] rounded-xl p-2 text-white font-mono focus:outline-none focus:border-[#8b5cf6]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[#94a3b8] mb-1 font-medium">Часов в дневной смене</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={shiftSettings.defaultDayHours === 0 ? '' : String(shiftSettings.defaultDayHours)}
+                    onChange={(e) => {
+                      const clean = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+                      updateShiftSettings({ defaultDayHours: clean === '' ? 0 : Number(clean) });
+                    }}
+                    placeholder="12"
+                    className="w-full bg-[#161720] border border-white/[0.08] rounded-xl p-2 text-white font-mono focus:outline-none focus:border-[#8b5cf6]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[#94a3b8] mb-1 font-medium">Часов в суточной смене</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={shiftSettings.defaultFullHours === 0 ? '' : String(shiftSettings.defaultFullHours)}
+                    onChange={(e) => {
+                      const clean = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+                      updateShiftSettings({ defaultFullHours: clean === '' ? 0 : Number(clean) });
+                    }}
+                    placeholder="24"
+                    className="w-full bg-[#161720] border border-white/[0.08] rounded-xl p-2 text-white font-mono focus:outline-none focus:border-[#8b5cf6]"
+                  />
+                </div>
               </div>
             </div>
 
@@ -3267,6 +3431,7 @@ export const CalendarShiftView: React.FC = () => {
                       { type: 'day', label: '☀️ День' },
                       { type: 'night', label: '🌙 Ночь' },
                       { type: 'full', label: '⏳ Сутки' },
+                      { type: 'part', label: '⚡ Подработка' },
                       { type: 'off', label: '🏖️ Выходной' },
                       { type: 'vacation', label: '🌴 Отпуск' },
                     ] as const).map(({ type: t, label }) => {
@@ -3287,7 +3452,66 @@ export const CalendarShiftView: React.FC = () => {
                       );
                     })}
                   </div>
+
+                  {/* Batch Buttons in Mobile */}
+                  <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                    <span className="text-[10px] text-[#94a3b8] font-bold">+ Пакетом:</span>
+                    {[
+                      { label: '+2 Дня', seq: ['day', 'day'] },
+                      { label: '+2 Ночи', seq: ['night', 'night'] },
+                      { label: '+2 Вых', seq: ['off', 'off'] },
+                      { label: '+3 Вых', seq: ['off', 'off', 'off'] },
+                      { label: '+4 Вых', seq: ['off', 'off', 'off', 'off'] },
+                    ].map((b) => (
+                      <button
+                        key={b.label}
+                        type="button"
+                        onClick={() => {
+                          setSelectedPresetId('custom');
+                          setActiveSequence((prev) => [...prev, ...(b.seq as ShiftType[])]);
+                        }}
+                        className="px-2 py-0.5 rounded-md bg-white/[0.06] hover:bg-white/[0.12] text-[10px] font-mono text-[#cbd5e1]"
+                      >
+                        {b.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
+
+                {/* Mobile Start Phase / Cycle Day Selector */}
+                {activeSequence.length > 1 && (
+                  <div className="p-2.5 bg-[#101117] border border-white/[0.08] rounded-xl space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-[#94a3b8] uppercase">
+                        С какого дня цикла начать отсчет?
+                      </span>
+                      <span className="text-[9px] text-[#8b5cf6] font-bold">
+                        {genCycleOffset + 1}-й: {SHIFT_TYPE_CONFIG[activeSequence[genCycleOffset] || 'day'].shortLabel}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {activeSequence.map((type, idx) => {
+                        const cfg = SHIFT_TYPE_CONFIG[type];
+                        const isChosen = genCycleOffset === idx;
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => setGenCycleOffset(idx)}
+                            className={`px-2 py-1 rounded-lg border text-[10px] font-bold flex items-center gap-1 transition-all active:scale-95 ${
+                              isChosen
+                                ? 'border-[#8b5cf6] bg-[#8b5cf6]/30 text-white ring-1 ring-[#8b5cf6]'
+                                : 'border-white/[0.08] bg-[#161720] text-[#94a3b8]'
+                            }`}
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: cfg.color }} />
+                            <span>{idx + 1}-й: {cfg.shortLabel}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {/* 3. Generation Parameters: Start Date & Duration */}
                 <div className="space-y-2">
@@ -3398,7 +3622,35 @@ export const CalendarShiftView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* 5. Live Preview */}
+                {/* 5. Live Timeline Strip Preview */}
+                {previewDays.length > 0 && (
+                  <div className="space-y-1">
+                    <span className="text-[9px] font-bold text-[#94a3b8] uppercase block">
+                      Предпросмотр первых {previewDays.length} дней:
+                    </span>
+                    <div className="flex items-center gap-1 overflow-x-auto p-1.5 bg-[#101117] border border-white/[0.08] rounded-xl no-scrollbar">
+                      {previewDays.map((pd, pidx) => {
+                        const cfg = SHIFT_TYPE_CONFIG[pd.type];
+                        return (
+                          <div
+                            key={pidx}
+                            className="flex flex-col items-center justify-center p-1 rounded-lg border shrink-0 min-w-[50px] text-center"
+                            style={{ backgroundColor: cfg.bg, borderColor: cfg.border }}
+                          >
+                            <span className="text-[8px] font-bold text-[#94a3b8]">{pd.weekday}</span>
+                            <span className="text-[9px] font-bold text-white">{pd.dateStr}</span>
+                            <div className="mt-0.5 flex items-center gap-0.5" style={{ color: cfg.color }}>
+                              <cfg.icon size={10} />
+                              <span className="text-[8px] font-black">{cfg.shortLabel}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Live Totals Card */}
                 {generatorPreview && (
                   <div className="p-2.5 bg-[#161824] rounded-xl border border-white/[0.08] flex items-center justify-between text-xs">
                     <span className="text-[#94a3b8] text-[10px]">
