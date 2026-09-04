@@ -659,17 +659,30 @@ export const RichWordEditor: React.FC<RichWordEditorProps> = ({
       onHeading: (level: 1 | 2 | 3) => {
         restoreSelection();
         const sel = window.getSelection();
-        if (sel && sel.anchorNode) {
+        if (sel && sel.anchorNode && editorRef.current?.contains(sel.anchorNode)) {
           let node = sel.anchorNode.nodeType === 3 ? sel.anchorNode.parentElement : (sel.anchorNode as HTMLElement);
-          let heading = node?.closest<HTMLElement>('h1, h2, h3');
-          if (heading && heading.tagName.toLowerCase() === `h${level}`) {
-            document.execCommand('formatBlock', false, '<p>');
-          } else {
-            document.execCommand('formatBlock', false, `<h${level}>`);
+          let block = node?.closest<HTMLElement>('h1, h2, h3, p, div, li, blockquote');
+
+          if (block && block !== editorRef.current && editorRef.current?.contains(block)) {
+            const isSameHeading = block.tagName.toLowerCase() === `h${level}`;
+            const targetTag = isSameHeading ? 'p' : `h${level}`;
+
+            const newElem = document.createElement(targetTag);
+            newElem.innerHTML = block.innerHTML || '<br>';
+            if (block.style.textAlign) newElem.style.textAlign = block.style.textAlign;
+            block.parentNode?.replaceChild(newElem, block);
+
+            const range = document.createRange();
+            range.selectNodeContents(newElem);
+            range.collapse(false);
+            sel.removeAllRanges();
+            sel.addRange(range);
+            saveCurrentSelection();
+            handleEditorInput();
+            return;
           }
-        } else {
-          document.execCommand('formatBlock', false, `<h${level}>`);
         }
+        document.execCommand('formatBlock', false, `<h${level}>`);
         saveCurrentSelection();
         handleEditorInput();
       },

@@ -127,6 +127,8 @@ export const ObsidianGraphView: React.FC = () => {
     themePreset,
     themeMode,
     uiSettings,
+    tabs,
+    activeTabId,
     selectNeuron,
     openNote,
     openTab,
@@ -205,6 +207,7 @@ export const ObsidianGraphView: React.FC = () => {
   const simulationRef = useRef<any>(null);
   const textWidthCacheRef = useRef<Map<string, number>>(new Map());
   const requestRenderRef = useRef<(() => void) | null>(null);
+  const lastTouchEndTimeRef = useRef<number>(0);
 
   // Touch & Pinch-to-zoom tracking ref
   const touchStateRef = useRef<{
@@ -323,6 +326,49 @@ export const ObsidianGraphView: React.FC = () => {
   useEffect(() => {
     centerGraphInViewport();
   }, [centerGraphInViewport]);
+
+  // Tab activation watcher: re-center and render when user switches back to Graph
+  const isGraphTab = useMemo(() => {
+    const active = tabs.find((t) => t.id === activeTabId);
+    return active?.type === 'graph';
+  }, [tabs, activeTabId]);
+
+  useEffect(() => {
+    if (isGraphTab) {
+      const timer = setTimeout(() => {
+        centerGraphInViewport();
+        requestRenderRef.current?.();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [isGraphTab, centerGraphInViewport]);
+
+  // ResizeObserver for zero-lag responsiveness when tabs switch or screen rotates
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.contentRect.width > 50 && entry.contentRect.height > 50) {
+          const canvas = canvasRef.current;
+          if (canvas) {
+            const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+            const w = entry.contentRect.width;
+            const h = entry.contentRect.height;
+            if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
+              canvas.width = w * dpr;
+              canvas.height = h * dpr;
+            }
+          }
+          requestRenderRef.current?.();
+        }
+      }
+    });
+
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
 
   // Keyboard shortcut listener for Esc
   useEffect(() => {
@@ -792,6 +838,7 @@ export const ObsidianGraphView: React.FC = () => {
 
   // Safe Canvas MouseDown: Left click drags node or pans; 2-click Link Mode
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (Date.now() - lastTouchEndTimeRef.current < 650) return;
     if (e.button === 2) return; // Right-click handled by handleContextMenu
 
     dragStartPos.current = { x: e.clientX, y: e.clientY };
@@ -977,6 +1024,7 @@ export const ObsidianGraphView: React.FC = () => {
       }
       isPanning = false;
 
+      lastTouchEndTimeRef.current = Date.now();
       const elapsed = Date.now() - touchStartTime;
       if (!hasMoved && elapsed < 350) {
         const rect = canvas.getBoundingClientRect();
@@ -1010,7 +1058,7 @@ export const ObsidianGraphView: React.FC = () => {
           return;
         }
 
-        // 2. Normal Tap: select node and open sleek mobile action card
+        // 2. Normal Tap: select node and open sleek mobile action card (NO abrupt tab jumping!)
         if (hit) {
           selectNeuron(hit.id);
           setSelectedMobileNode(hit);
@@ -1037,6 +1085,8 @@ export const ObsidianGraphView: React.FC = () => {
   }, [findNodeAt, openNote, selectNeuron]);
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    // Suppress synthetic mouse click immediately following a mobile touch event
+    if (Date.now() - lastTouchEndTimeRef.current < 650) return;
     if (hasMovedSignificantly.current || isLinkingMode) return;
 
     const { x, y } = getGraphCoords(e.clientX, e.clientY);
@@ -1044,9 +1094,12 @@ export const ObsidianGraphView: React.FC = () => {
 
     if (hitNode) {
       selectNeuron(hitNode.id);
-      openNote(hitNode.id);
+      setSelectedMobileNode(hitNode);
+      requestRenderRef.current?.();
     } else {
       selectNeuron(null);
+      setSelectedMobileNode(null);
+      requestRenderRef.current?.();
     }
   };
 

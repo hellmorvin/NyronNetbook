@@ -253,9 +253,15 @@ function getAllNetworkInterfaces() {
   }
 
   // Priority sorting: Wi-Fi (1), Hotspot (2), Ethernet (3), Other (4), Virtual (5)
+  // Also prioritize common home subnet 192.168.x.x over 172.x.x.x
   list.sort((a, b) => {
     const priority = { wifi: 1, hotspot: 2, ethernet: 3, other: 4, virtual: 5 };
-    return (priority[a.type] || 4) - (priority[b.type] || 4);
+    const pA = priority[a.type] || 4;
+    const pB = priority[b.type] || 4;
+    if (pA !== pB) return pA - pB;
+    if (a.address.startsWith('192.168.') && !b.address.startsWith('192.168.')) return -1;
+    if (!a.address.startsWith('192.168.') && b.address.startsWith('192.168.')) return 1;
+    return 0;
   });
 
   return list;
@@ -263,8 +269,10 @@ function getAllNetworkInterfaces() {
 
 function getLocalIpAddress() {
   const list = getAllNetworkInterfaces();
-  const nonVirtual = list.find((i) => !i.isVirtual);
+  const nonVirtual = list.find((i) => !i.isVirtual && (i.type === 'wifi' || i.type === 'hotspot' || i.type === 'ethernet'));
   if (nonVirtual) return nonVirtual.address;
+  const anyNonVirtual = list.find((i) => !i.isVirtual);
+  if (anyNonVirtual) return anyNonVirtual.address;
   if (list.length > 0) return list[0].address;
   return '127.0.0.1';
 }

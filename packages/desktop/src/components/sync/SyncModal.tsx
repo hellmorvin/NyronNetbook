@@ -268,9 +268,17 @@ export const SyncModal: React.FC = () => {
     setTimeout(() => setSyncStatus('idle'), 4500);
   };
 
-  // Compile full QR sync payload containing candidate IPs and master pairing key
+  // Compile full QR sync payload containing candidate IPs (Wi-Fi / LAN first, virtual last)
   const candidateIps = allInterfaces.length > 0
-    ? Array.from(new Set([localIp, ...allInterfaces.map((i) => i.address)]))
+    ? Array.from(new Set([localIp, ...allInterfaces.map((i) => i.address)])).sort((a, b) => {
+        const isVirtualA = a.startsWith('172.') || allInterfaces.find((i) => i.address === a)?.isVirtual;
+        const isVirtualB = b.startsWith('172.') || allInterfaces.find((i) => i.address === b)?.isVirtual;
+        if (isVirtualA && !isVirtualB) return 1;
+        if (!isVirtualA && isVirtualB) return -1;
+        if (a.startsWith('192.168.') && !b.startsWith('192.168.')) return -1;
+        if (!a.startsWith('192.168.') && b.startsWith('192.168.')) return 1;
+        return 0;
+      })
     : [localIp];
 
   const qrString = encodeSyncQRPayload({

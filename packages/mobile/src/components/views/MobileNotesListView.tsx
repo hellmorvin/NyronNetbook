@@ -78,33 +78,39 @@ export const MobileNotesListView: React.FC = () => {
     return Array.from(set);
   }, [neurons]);
 
-  // Filtered & Sorted notes
+  // Stable note ordering so notes never jump around or re-sort erratically while typing
+  const stableOrderRef = React.useRef<{ key: string; order: string[] }>({ key: '', order: [] });
+  const currentSortKey = `${sortBy}_${selectedFolder || ''}_${selectedTag || ''}_${searchQuery}`;
+
+  // Filtered & Sorted notes (stabilized during active typing/editing)
   const displayedNotes = useMemo(() => {
-    return neurons
-      .filter((n) => {
-        // Search filter
-        if (searchQuery.trim()) {
-          const q = searchQuery.toLowerCase();
-          const matchTitle = n.title.toLowerCase().includes(q);
-          const matchContent = n.content.toLowerCase().includes(q);
-          const matchTags = n.tags?.some((t) => t.toLowerCase().includes(q));
-          if (!matchTitle && !matchContent && !matchTags) return false;
-        }
+    const filtered = neurons.filter((n) => {
+      // Search filter
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchTitle = n.title.toLowerCase().includes(q);
+        const matchContent = n.content.toLowerCase().includes(q);
+        const matchTags = n.tags?.some((t) => t.toLowerCase().includes(q));
+        if (!matchTitle && !matchContent && !matchTags) return false;
+      }
 
-        // Folder filter
-        if (selectedFolder) {
-          const folder = n.filePath ? n.filePath.split('/')[0] : 'Без папки';
-          if (folder !== selectedFolder) return false;
-        }
+      // Folder filter
+      if (selectedFolder) {
+        const folder = n.filePath ? n.filePath.split('/')[0] : 'Без папки';
+        if (folder !== selectedFolder) return false;
+      }
 
-        // Tag filter
-        if (selectedTag) {
-          if (!n.tags?.includes(selectedTag)) return false;
-        }
+      // Tag filter
+      if (selectedTag) {
+        if (!n.tags?.includes(selectedTag)) return false;
+      }
 
-        return true;
-      })
-      .sort((a, b) => {
+      return true;
+    });
+
+    // If search/folder/tag/sort filter changed, compute fresh sort order
+    if (stableOrderRef.current.key !== currentSortKey || stableOrderRef.current.order.length === 0) {
+      const sorted = [...filtered].sort((a, b) => {
         if (sortBy === 'pinned') {
           if (a.pinned && !b.pinned) return -1;
           if (!a.pinned && b.pinned) return 1;
@@ -123,7 +129,27 @@ export const MobileNotesListView: React.FC = () => {
         if (!a.pinned && b.pinned) return 1;
         return b.updatedAt - a.updatedAt;
       });
-  }, [neurons, searchQuery, selectedFolder, selectedTag, sortBy]);
+
+      stableOrderRef.current = {
+        key: currentSortKey,
+        order: sorted.map((n) => n.id),
+      };
+      return sorted;
+    }
+
+    // Preserve stable order for existing notes while updating their content in-place
+    const orderMap = new Map<string, number>();
+    stableOrderRef.current.order.forEach((id, idx) => orderMap.set(id, idx));
+
+    return [...filtered].sort((a, b) => {
+      const idxA = orderMap.has(a.id) ? orderMap.get(a.id)! : -1;
+      const idxB = orderMap.has(b.id) ? orderMap.get(b.id)! : -1;
+      if (idxA === -1 && idxB === -1) return b.updatedAt - a.updatedAt;
+      if (idxA === -1) return -1; // newly added note appears at top
+      if (idxB === -1) return 1;
+      return idxA - idxB;
+    });
+  }, [neurons, searchQuery, selectedFolder, selectedTag, sortBy, currentSortKey]);
 
   const handleCreateNewNote = () => {
     const newNote = addNeuron('Новая мысль', '', selectedFolder || undefined);

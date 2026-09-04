@@ -32,6 +32,7 @@ import {
   Minus,
   Copy,
   Zap,
+  MoreVertical,
 } from 'lucide-react';
 import { useBrainStore } from '../../store/useBrainStore';
 import { LearningState } from '@axon/shared';
@@ -60,6 +61,7 @@ export const ObsidianNoteEditor: React.FC<ObsidianNoteEditorProps> = ({ noteId }
 
   // Note View Mode: 'visual' (Word/Notion style WYSIWYG) | 'markdown' (Raw MD) | 'preview' (Reading)
   const [viewMode, setViewMode] = useState<'visual' | 'markdown' | 'preview'>('visual');
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [tagInput, setTagInput] = useState('');
   const [isTagDropdownOpen, setIsTagDropdownOpen] = useState(false);
   const [isFolderPickerOpen, setIsFolderPickerOpen] = useState(false);
@@ -322,38 +324,26 @@ export const ObsidianNoteEditor: React.FC<ObsidianNoteEditorProps> = ({ noteId }
             title="Назад к списку заметок"
           >
             <ArrowLeft size={14} className="text-[#7c5cff]" />
-            <span className="font-semibold text-xs">Заметки</span>
+            <span className="font-semibold text-xs hidden xs:inline">Заметки</span>
           </button>
 
-          {/* Mode Switcher Pill: Visual vs Markdown vs Preview */}
+          {/* Clean Segmented Mode Switcher: Text vs Reading */}
           <div className="flex items-center p-0.5 bg-[#171824] border border-white/[0.08] rounded-xl text-xs shrink-0">
             <button
               onClick={() => setViewMode('visual')}
-              className={`px-2.5 py-1 rounded-lg font-bold transition-all flex items-center gap-1 ${
+              className={`px-2.5 py-1 rounded-lg font-bold transition-all flex items-center gap-1 text-xs ${
                 viewMode === 'visual'
                   ? 'bg-[#7c5cff] text-white shadow'
                   : 'text-[#94a3b8] hover:text-white'
               }`}
-              title="Визуальный редактор с форматированием"
+              title="Визуальный редактор"
             >
               <Edit3 size={12} />
               <span>Текст</span>
             </button>
             <button
-              onClick={() => setViewMode('markdown')}
-              className={`px-2.5 py-1 rounded-lg font-bold transition-all flex items-center gap-1 ${
-                viewMode === 'markdown'
-                  ? 'bg-[#7c5cff] text-white shadow'
-                  : 'text-[#94a3b8] hover:text-white'
-              }`}
-              title="Исходный код Markdown"
-            >
-              <Code size={12} />
-              <span>MD</span>
-            </button>
-            <button
               onClick={() => setViewMode('preview')}
-              className={`px-2.5 py-1 rounded-lg font-bold transition-all flex items-center gap-1 ${
+              className={`px-2.5 py-1 rounded-lg font-bold transition-all flex items-center gap-1 text-xs ${
                 viewMode === 'preview'
                   ? 'bg-[#7c5cff] text-white shadow'
                   : 'text-[#94a3b8] hover:text-white'
@@ -366,25 +356,15 @@ export const ObsidianNoteEditor: React.FC<ObsidianNoteEditorProps> = ({ noteId }
           </div>
         </div>
 
-        {/* Save Status & Action Buttons */}
-        <div className="flex items-center gap-1 shrink-0">
-          <span className="text-[10px] text-[#64748b] hidden xs:inline font-mono mr-1">
-            {saveStatus === 'saving' ? 'Сохранение...' : '✓ Сохранено'}
-          </span>
+        {/* Save Status & Action Buttons (Decluttered with More Menu) */}
+        <div className="flex items-center gap-1.5 shrink-0 relative">
+          {saveStatus === 'saving' ? (
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse mr-1" title="Сохранение..." />
+          ) : (
+            <span className="text-[10px] text-emerald-400 hidden sm:inline font-mono mr-1">✓ Сохранено</span>
+          )}
 
-          {/* Find on Graph */}
-          <button
-            onClick={() => {
-              selectNeuron(neuron.id);
-              openTab({ type: 'graph', title: 'Граф' });
-            }}
-            className="p-1.5 rounded-xl text-[#38bdf8] bg-[#38bdf8]/10 hover:bg-[#38bdf8]/20 active:scale-95 transition-all border border-[#38bdf8]/30"
-            title="Открыть на Графе"
-          >
-            <Zap size={14} />
-          </button>
-
-          {/* Pin */}
+          {/* Quick Pin Toggle */}
           <button
             onClick={() => togglePin(neuron.id)}
             className={`p-1.5 rounded-xl transition-all active:scale-95 ${
@@ -394,26 +374,69 @@ export const ObsidianNoteEditor: React.FC<ObsidianNoteEditorProps> = ({ noteId }
             }`}
             title={neuron.pinned ? 'Открепить заметку' : 'Закрепить'}
           >
-            <Pin size={14} className={neuron.pinned ? 'fill-amber-400' : ''} />
+            <Pin size={15} className={neuron.pinned ? 'fill-amber-400' : ''} />
           </button>
 
-          {/* Note Info */}
-          <button
-            onClick={() => setIsInfoModalOpen(true)}
-            className="p-1.5 rounded-xl text-[#94a3b8] hover:text-white bg-white/[0.05] border border-white/[0.06] active:scale-95 transition-all"
-            title="Информация"
-          >
-            <Info size={14} />
-          </button>
+          {/* More Actions Dropdown (Zap, MD Mode, Info, Delete) */}
+          <div className="relative">
+            <button
+              onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
+              className="p-1.5 rounded-xl text-[#94a3b8] hover:text-white bg-white/[0.05] border border-white/[0.06] active:scale-95 transition-all"
+              title="Дополнительно"
+            >
+              <MoreVertical size={15} />
+            </button>
 
-          {/* Delete */}
-          <button
-            onClick={() => setIsDeleteModalOpen(true)}
-            className="p-1.5 rounded-xl text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 active:scale-95 transition-all"
-            title="Удалить"
-          >
-            <Trash2 size={14} />
-          </button>
+            {isMoreMenuOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setIsMoreMenuOpen(false)}
+                />
+                <div
+                  className="absolute right-0 top-10 bg-[#171822] border border-white/[0.12] rounded-2xl p-1.5 shadow-2xl z-50 w-52 space-y-0.5 animate-fade-in"
+                  onClick={() => setIsMoreMenuOpen(false)}
+                >
+                  <button
+                    onClick={() => {
+                      selectNeuron(neuron.id);
+                      openTab({ type: 'graph', title: 'Граф' });
+                    }}
+                    className="w-full px-3 py-2 rounded-xl text-left text-xs font-semibold text-[#38bdf8] hover:bg-[#38bdf8]/10 flex items-center gap-2 transition-colors"
+                  >
+                    <Zap size={14} />
+                    <span>Показать на Графе</span>
+                  </button>
+
+                  <button
+                    onClick={() => setViewMode(viewMode === 'markdown' ? 'visual' : 'markdown')}
+                    className="w-full px-3 py-2 rounded-xl text-left text-xs font-semibold text-white hover:bg-white/[0.08] flex items-center gap-2 transition-colors"
+                  >
+                    <Code size={14} className="text-[#a78bfa]" />
+                    <span>{viewMode === 'markdown' ? 'Редактор Текст' : 'Код Markdown (MD)'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => setIsInfoModalOpen(true)}
+                    className="w-full px-3 py-2 rounded-xl text-left text-xs font-semibold text-[#cbd5e1] hover:bg-white/[0.08] flex items-center gap-2 transition-colors"
+                  >
+                    <Info size={14} className="text-[#94a3b8]" />
+                    <span>Инфо о заметке</span>
+                  </button>
+
+                  <div className="h-[1px] bg-white/[0.08] my-1" />
+
+                  <button
+                    onClick={() => setIsDeleteModalOpen(true)}
+                    className="w-full px-3 py-2 rounded-xl text-left text-xs font-semibold text-rose-400 hover:bg-rose-500/15 flex items-center gap-2 transition-colors"
+                  >
+                    <Trash2 size={14} />
+                    <span>Удалить заметку</span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -535,7 +558,6 @@ export const ObsidianNoteEditor: React.FC<ObsidianNoteEditorProps> = ({ noteId }
               <button
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
-                onTouchStart={(e) => e.preventDefault()}
                 onClick={() => handleInsertMarkup('**', '**', 'жирный')}
                 className="h-8 w-8 rounded-lg bg-white/[0.05] active:bg-[#7c5cff] text-white font-black text-xs flex items-center justify-center shrink-0 transition-colors"
                 title="Жирный шрифт"
@@ -545,7 +567,6 @@ export const ObsidianNoteEditor: React.FC<ObsidianNoteEditorProps> = ({ noteId }
               <button
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
-                onTouchStart={(e) => e.preventDefault()}
                 onClick={() => handleInsertMarkup('*', '*', 'курсив')}
                 className="h-8 w-8 rounded-lg bg-white/[0.05] active:bg-[#7c5cff] text-white italic font-serif text-xs flex items-center justify-center shrink-0 transition-colors"
                 title="Курсив"
@@ -555,9 +576,8 @@ export const ObsidianNoteEditor: React.FC<ObsidianNoteEditorProps> = ({ noteId }
               <button
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
-                onTouchStart={(e) => e.preventDefault()}
                 onClick={() => handleInsertLinePrefix('# ')}
-                className="h-8 px-2 rounded-lg bg-white/[0.05] active:bg-[#7c5cff] text-white font-bold text-xs flex items-center justify-center shrink-0 transition-colors"
+                className="h-8 px-2.5 rounded-lg bg-white/[0.05] active:bg-[#7c5cff] text-white font-bold text-xs flex items-center justify-center shrink-0 transition-colors"
                 title="Заголовок H1"
               >
                 H1
@@ -565,9 +585,8 @@ export const ObsidianNoteEditor: React.FC<ObsidianNoteEditorProps> = ({ noteId }
               <button
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
-                onTouchStart={(e) => e.preventDefault()}
                 onClick={() => handleInsertLinePrefix('## ')}
-                className="h-8 px-2 rounded-lg bg-white/[0.05] active:bg-[#7c5cff] text-white font-bold text-xs flex items-center justify-center shrink-0 transition-colors"
+                className="h-8 px-2.5 rounded-lg bg-white/[0.05] active:bg-[#7c5cff] text-white font-bold text-xs flex items-center justify-center shrink-0 transition-colors"
                 title="Заголовок H2"
               >
                 H2
@@ -575,7 +594,6 @@ export const ObsidianNoteEditor: React.FC<ObsidianNoteEditorProps> = ({ noteId }
               <button
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
-                onTouchStart={(e) => e.preventDefault()}
                 onClick={() => handleInsertLinePrefix('- [ ] ')}
                 className="h-8 w-8 rounded-lg bg-white/[0.05] active:bg-[#7c5cff] text-white flex items-center justify-center shrink-0 transition-colors"
                 title="Чекбокс задачи"
@@ -585,7 +603,6 @@ export const ObsidianNoteEditor: React.FC<ObsidianNoteEditorProps> = ({ noteId }
               <button
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
-                onTouchStart={(e) => e.preventDefault()}
                 onClick={() => handleInsertLinePrefix('- ')}
                 className="h-8 w-8 rounded-lg bg-white/[0.05] active:bg-[#7c5cff] text-white flex items-center justify-center shrink-0 transition-colors"
                 title="Маркированный список"
@@ -595,7 +612,6 @@ export const ObsidianNoteEditor: React.FC<ObsidianNoteEditorProps> = ({ noteId }
               <button
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
-                onTouchStart={(e) => e.preventDefault()}
                 onClick={() => handleInsertLinePrefix('1. ')}
                 className="h-8 w-8 rounded-lg bg-white/[0.05] active:bg-[#7c5cff] text-white flex items-center justify-center shrink-0 transition-colors"
                 title="Нумерованный список"
@@ -605,7 +621,6 @@ export const ObsidianNoteEditor: React.FC<ObsidianNoteEditorProps> = ({ noteId }
               <button
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
-                onTouchStart={(e) => e.preventDefault()}
                 onClick={() => handleInsertLinePrefix('> ')}
                 className="h-8 w-8 rounded-lg bg-white/[0.05] active:bg-[#7c5cff] text-white flex items-center justify-center shrink-0 transition-colors"
                 title="Цитата"
@@ -615,7 +630,6 @@ export const ObsidianNoteEditor: React.FC<ObsidianNoteEditorProps> = ({ noteId }
               <button
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
-                onTouchStart={(e) => e.preventDefault()}
                 onClick={() => handleInsertMarkup('`', '`', 'код')}
                 className="h-8 w-8 rounded-lg bg-white/[0.05] active:bg-[#7c5cff] text-white flex items-center justify-center shrink-0 transition-colors"
                 title="Код"
@@ -625,7 +639,6 @@ export const ObsidianNoteEditor: React.FC<ObsidianNoteEditorProps> = ({ noteId }
               <button
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
-                onTouchStart={(e) => e.preventDefault()}
                 onClick={() => setIsWikilinkPickerOpen(true)}
                 className="h-8 px-2.5 rounded-lg bg-[#7c5cff]/20 active:bg-[#7c5cff] text-[#a78bfa] border border-[#7c5cff]/40 shrink-0 font-bold text-xs flex items-center gap-1 transition-colors"
                 title="Вставить ссылку [[Мысль]]"
@@ -636,7 +649,6 @@ export const ObsidianNoteEditor: React.FC<ObsidianNoteEditorProps> = ({ noteId }
               <button
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
-                onTouchStart={(e) => e.preventDefault()}
                 onClick={() => handleInsertLinePrefix('---\n')}
                 className="h-8 w-8 rounded-lg bg-white/[0.05] active:bg-[#7c5cff] text-white flex items-center justify-center shrink-0 transition-colors"
                 title="Разделитель"

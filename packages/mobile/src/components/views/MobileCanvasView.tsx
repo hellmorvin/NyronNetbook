@@ -576,6 +576,9 @@ export const MobileCanvasView: React.FC = () => {
               isDraggingCard = true;
               draggingCardId = id;
               dragCardDomElem = cardElem;
+              dragCardDomElem.style.transition = 'none';
+              dragCardDomElem.style.willChange = 'transform';
+              dragCardDomElem.style.zIndex = '40';
               cardStartX = card.x;
               cardStartY = card.y;
               return;
@@ -726,6 +729,11 @@ export const MobileCanvasView: React.FC = () => {
         }
       }
 
+      if (dragCardDomElem) {
+        dragCardDomElem.style.zIndex = '';
+        dragCardDomElem.style.willChange = '';
+        dragCardDomElem.style.transition = '';
+      }
       isDraggingCard = false;
       draggingCardId = null;
       dragCardDomElem = null;
@@ -1171,7 +1179,7 @@ export const MobileCanvasView: React.FC = () => {
                   <div
                     key={card.id}
                     data-card-id={card.id}
-                    className={`absolute p-3 rounded-2xl border shadow-2xl backdrop-blur-xl flex flex-col justify-between pointer-events-auto transition-all select-none ${
+                    className={`absolute p-3 rounded-2xl border shadow-2xl backdrop-blur-xl flex flex-col justify-between pointer-events-auto transition-[box-shadow,border-color] select-none ${
                       isLinking
                         ? 'ring-4 ring-[#8b5cf6] shadow-purple-500/50 animate-pulse'
                         : isSelected

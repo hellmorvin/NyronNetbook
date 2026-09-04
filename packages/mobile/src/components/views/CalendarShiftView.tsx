@@ -155,6 +155,15 @@ const CYCLE_PRESET_TEMPLATES = [
     sequence: ['day', 'day', 'day', 'day', 'day', 'off', 'off'] as ShiftType[],
   },
   {
+    id: '15_15',
+    name: '15 / 15 Вахта',
+    desc: '30 дней: 15 смен подряд ➔ 15 отдыха',
+    sequence: [
+      'day', 'day', 'day', 'day', 'day', 'day', 'day', 'day', 'day', 'day', 'day', 'day', 'day', 'day', 'day',
+      'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off', 'off',
+    ] as ShiftType[],
+  },
+  {
     id: 'custom',
     name: 'Конструктор своего цикла',
     desc: 'Произвольная цепочка любой сложности',
@@ -1280,6 +1289,59 @@ export const CalendarShiftView: React.FC = () => {
                 </div>
               );
             })}
+          </div>
+
+          {/* 4 Big 1-Tap Quick Action Cards (Identical sleek design to Finances from Image 3) */}
+          <div className="grid grid-cols-4 gap-2 mt-3">
+            {/* 1. + Смена */}
+            <button
+              onClick={() => {
+                setMobileAddTab('shift');
+                setIsMobileAddModalOpen(true);
+              }}
+              className="flex flex-col items-center justify-center p-2 rounded-2xl bg-[#10b981]/15 border border-[#10b981]/25 hover:bg-[#10b981]/25 transition-all active:scale-95 text-center shadow-sm"
+            >
+              <div className="w-8 h-8 rounded-full bg-[#10b981]/25 text-[#10b981] flex items-center justify-center mb-1">
+                <Briefcase size={16} strokeWidth={2.5} />
+              </div>
+              <span className="text-[11px] font-bold text-white leading-tight">+ Смена</span>
+            </button>
+
+            {/* 2. 🔄 Цикл */}
+            <button
+              onClick={() => {
+                setMobileAddTab('generator');
+                setIsMobileAddModalOpen(true);
+              }}
+              className="flex flex-col items-center justify-center p-2 rounded-2xl bg-[#8b5cf6]/15 border border-[#8b5cf6]/25 hover:bg-[#8b5cf6]/25 transition-all active:scale-95 text-center shadow-sm"
+            >
+              <div className="w-8 h-8 rounded-full bg-[#8b5cf6]/25 text-[#8b5cf6] flex items-center justify-center mb-1">
+                <RotateCcw size={16} strokeWidth={2.5} />
+              </div>
+              <span className="text-[11px] font-bold text-white leading-tight">🔄 Цикл</span>
+            </button>
+
+            {/* 3. ⚙️ Ставки */}
+            <button
+              onClick={() => setIsSettingsOpen(true)}
+              className="flex flex-col items-center justify-center p-2 rounded-2xl bg-[#f59e0b]/15 border border-[#f59e0b]/25 hover:bg-[#f59e0b]/25 transition-all active:scale-95 text-center shadow-sm"
+            >
+              <div className="w-8 h-8 rounded-full bg-[#f59e0b]/25 text-[#f59e0b] flex items-center justify-center mb-1">
+                <Sliders size={16} strokeWidth={2.5} />
+              </div>
+              <span className="text-[11px] font-bold text-white leading-tight">⚙️ Ставки</span>
+            </button>
+
+            {/* 4. 📊 Отчет */}
+            <button
+              onClick={() => setIsReportModalOpen(true)}
+              className="flex flex-col items-center justify-center p-2 rounded-2xl bg-[#38bdf8]/15 border border-[#38bdf8]/25 hover:bg-[#38bdf8]/25 transition-all active:scale-95 text-center shadow-sm"
+            >
+              <div className="w-8 h-8 rounded-full bg-[#38bdf8]/25 text-[#38bdf8] flex items-center justify-center mb-1">
+                <PieChart size={16} strokeWidth={2.5} />
+              </div>
+              <span className="text-[11px] font-bold text-white leading-tight">📊 Отчет</span>
+            </button>
           </div>
 
           {/* Mobile Selected Day Inspector & Monthly Totals Dashboard (fills empty bottom space) */}
@@ -3199,8 +3261,15 @@ export const CalendarShiftView: React.FC = () => {
                   </div>
 
                   {/* Add Buttons */}
-                  <div className="flex items-center gap-1 flex-wrap">
-                    {(['day', 'night', 'full', 'off'] as const).map((t) => {
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[10px] text-[#94a3b8] font-bold block w-full">+ Добавить день в цикл:</span>
+                    {([
+                      { type: 'day', label: '☀️ День' },
+                      { type: 'night', label: '🌙 Ночь' },
+                      { type: 'full', label: '⏳ Сутки' },
+                      { type: 'off', label: '🏖️ Выходной' },
+                      { type: 'vacation', label: '🌴 Отпуск' },
+                    ] as const).map(({ type: t, label }) => {
                       const cfg = SHIFT_TYPE_CONFIG[t];
                       return (
                         <button
@@ -3210,10 +3279,10 @@ export const CalendarShiftView: React.FC = () => {
                             setSelectedPresetId('custom');
                             setActiveSequence((prev) => [...prev, t]);
                           }}
-                          className="px-2 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.10] border border-white/[0.06] text-[10px] text-white flex items-center gap-1"
+                          className="px-2.5 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.12] active:scale-95 border border-white/[0.08] text-[11px] font-bold text-white flex items-center gap-1.5 shadow-sm transition-all"
                         >
-                          <cfg.icon size={10} color={cfg.color} />
-                          <span>+{cfg.shortLabel}</span>
+                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: cfg.color }} />
+                          <span>{label}</span>
                         </button>
                       );
                     })}
@@ -3221,33 +3290,59 @@ export const CalendarShiftView: React.FC = () => {
                 </div>
 
                 {/* 3. Generation Parameters: Start Date & Duration */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-[10px] font-bold text-[#94a3b8] uppercase block mb-1">
-                      Старт графика:
-                    </label>
-                    <input
-                      type="date"
-                      value={genStartDate}
-                      onChange={(e) => setGenStartDate(e.target.value)}
-                      className="w-full bg-[#161720] border border-white/[0.08] rounded-xl p-2 text-white text-xs focus:outline-none focus:border-[#8b5cf6]"
-                    />
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] font-bold text-[#94a3b8] uppercase block mb-1">
+                        Старт графика:
+                      </label>
+                      <input
+                        type="date"
+                        value={genStartDate}
+                        onChange={(e) => setGenStartDate(e.target.value)}
+                        className="w-full bg-[#161720] border border-white/[0.08] rounded-xl p-2 text-white text-xs focus:outline-none focus:border-[#8b5cf6]"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-[#94a3b8] uppercase block mb-1">
+                        Период:
+                      </label>
+                      <select
+                        value={genDaysCount}
+                        onChange={(e) => setGenDaysCount(Number(e.target.value))}
+                        className="w-full bg-[#161720] border border-white/[0.08] rounded-xl p-2 text-white text-xs focus:outline-none focus:border-[#8b5cf6]"
+                      >
+                        <option value={30}>1 месяц (30 дн.)</option>
+                        <option value={60}>2 месяца (60 дн.)</option>
+                        <option value={90}>Квартал (90 дн.)</option>
+                        <option value={180}>Полгода (180 дн.)</option>
+                        <option value={365}>1 год (365 дн.)</option>
+                      </select>
+                    </div>
                   </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-[#94a3b8] uppercase block mb-1">
-                      Период:
-                    </label>
-                    <select
-                      value={genDaysCount}
-                      onChange={(e) => setGenDaysCount(Number(e.target.value))}
-                      className="w-full bg-[#161720] border border-white/[0.08] rounded-xl p-2 text-white text-xs focus:outline-none focus:border-[#8b5cf6]"
-                    >
-                      <option value={30}>1 месяц (30 дн.)</option>
-                      <option value={60}>2 месяца (60 дн.)</option>
-                      <option value={90}>Квартал (90 дн.)</option>
-                      <option value={180}>Полгода (180 дн.)</option>
-                      <option value={365}>1 год (365 дн.)</option>
-                    </select>
+
+                  {/* 1-Tap Quick Period Chips */}
+                  <div className="flex items-center gap-1.5">
+                    {[
+                      { days: 30, label: '1 мес' },
+                      { days: 60, label: '2 мес' },
+                      { days: 90, label: '3 мес' },
+                      { days: 180, label: 'Полгода' },
+                      { days: 365, label: '1 год' },
+                    ].map((p) => (
+                      <button
+                        key={p.days}
+                        type="button"
+                        onClick={() => setGenDaysCount(p.days)}
+                        className={`flex-1 py-1 rounded-lg text-[10px] font-bold transition-all border ${
+                          genDaysCount === p.days
+                            ? 'bg-[#8b5cf6] text-white border-[#8b5cf6] shadow-sm'
+                            : 'bg-white/[0.04] text-[#94a3b8] border-white/[0.06] hover:text-white'
+                        }`}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
 

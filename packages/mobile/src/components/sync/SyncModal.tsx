@@ -68,6 +68,8 @@ export const SyncModal: React.FC = () => {
   const [isTesting, setIsTesting] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
 
+  const [clipboardData, setClipboardData] = useState<string | null>(null);
+
   useEffect(() => {
     const savedKey = p2pSyncService.getPairingKey();
     if (savedKey) setPairingKey(savedKey);
@@ -77,15 +79,49 @@ export const SyncModal: React.FC = () => {
       if (status.remoteIp) setRemoteHost(status.remoteIp);
       if (status.pairingKey !== undefined) setPairingKey(status.pairingKey);
     });
+
+    // Check if user already copied QR text from phone camera to clipboard
+    if (isSyncOpen && typeof navigator !== 'undefined' && navigator.clipboard?.readText) {
+      navigator.clipboard.readText()
+        .then((text) => {
+          if (text) {
+            const trimmed = text.trim();
+            if (
+              (trimmed.startsWith('{') && (trimmed.includes('"app"') || trimmed.includes('"ips"') || trimmed.includes('"neurons"'))) ||
+              trimmed.startsWith('nyron://')
+            ) {
+              setClipboardData(trimmed);
+            }
+          }
+        })
+        .catch(() => {
+          // ignore
+        });
+    }
+
     return () => unsubscribe();
   }, [isSyncOpen]);
 
   if (!isSyncOpen) return null;
 
   const handleKeyChange = (val: string) => {
+    const trimmed = val.trim();
+    if (trimmed.startsWith('{') || trimmed.startsWith('nyron://')) {
+      handleQRDetected(trimmed);
+      return;
+    }
     const cleaned = val.toUpperCase().trim();
     setPairingKey(cleaned);
     p2pSyncService.setPairingKey(cleaned);
+  };
+
+  const handleRemoteHostChange = (val: string) => {
+    const trimmed = val.trim();
+    if (trimmed.startsWith('{') || trimmed.startsWith('nyron://')) {
+      handleQRDetected(trimmed);
+      return;
+    }
+    setRemoteHost(val);
   };
 
   const handlePasteKey = async () => {
@@ -96,6 +132,34 @@ export const SyncModal: React.FC = () => {
       }
     } catch {
       // ignore
+    }
+  };
+
+  const handlePasteFromClipboard = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text || !text.trim()) {
+        setImportError('Буфер обмена пуст. Скопируйте QR-текст из камеры или приложения на ПК.');
+        setTimeout(() => setImportError(null), 4000);
+        return;
+      }
+      const trimmed = text.trim();
+      if (trimmed.startsWith('{') || trimmed.startsWith('nyron://') || trimmed.includes('"ips"')) {
+        handleQRDetected(trimmed);
+      } else if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(trimmed)) {
+        setRemoteHost(trimmed);
+        setImportStatus(`Установлен IP компьютера: ${trimmed}`);
+        setTimeout(() => setImportStatus(null), 3000);
+      } else if (trimmed.startsWith('NYRON-') || /^[A-Z0-9-]{4,12}$/i.test(trimmed)) {
+        handleKeyChange(trimmed);
+        setImportStatus(`Установлен PIN сопряжения: ${trimmed}`);
+        setTimeout(() => setImportStatus(null), 3000);
+      } else {
+        handleQRDetected(trimmed);
+      }
+    } catch {
+      setImportError('Не удалось прочитать буфер. Разрешите доступ или вставьте данные в поле.');
+      setTimeout(() => setImportError(null), 4000);
     }
   };
 
@@ -356,16 +420,48 @@ export const SyncModal: React.FC = () => {
               </div>
 
               <p className="text-[11px] text-[#cbd5e1] leading-relaxed">
-                Откройте меню <b>«Синхронизация»</b> на компьютере и наведите камеру на большой QR-код на мониторе.
+                Откройте меню <b>«Синхронизация»</b> на компьютере и наведите камеру на большой QR-код на мониторе или вставьте скопированный камерой текст.
               </p>
 
-              <button
-                onClick={() => setIsScannerOpen(true)}
-                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#38bdf8] to-[#6366f1] hover:opacity-95 active:scale-[0.99] text-[#0a0b10] font-extrabold text-xs shadow-lg shadow-[#38bdf8]/20 flex items-center justify-center gap-2 transition-all"
-              >
-                <Camera size={16} />
-                <span>Сканировать QR-код с экрана ПК</span>
-              </button>
+              {/* Clipboard Auto-Detection Banner if QR JSON is found in clipboard */}
+              {clipboardData && (
+                <div className="p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-between gap-2 animate-fade-in">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
+                    <span className="text-[11px] font-bold text-emerald-200 truncate">
+                      В буфере найден QR-код ПК!
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      handleQRDetected(clipboardData);
+                      setClipboardData(null);
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-emerald-500 text-black font-extrabold text-[10px] shrink-0 active:scale-95 shadow"
+                  >
+                    Подключить
+                  </button>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  onClick={() => setIsScannerOpen(true)}
+                  className="w-full py-3 px-3 rounded-xl bg-gradient-to-r from-[#38bdf8] to-[#6366f1] hover:opacity-95 active:scale-[0.99] text-[#0a0b10] font-extrabold text-xs shadow-lg shadow-[#38bdf8]/20 flex items-center justify-center gap-2 transition-all"
+                >
+                  <Camera size={16} />
+                  <span>Сканировать QR с ПК</span>
+                </button>
+
+                <button
+                  onClick={handlePasteFromClipboard}
+                  className="w-full py-3 px-3 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] active:scale-[0.99] text-white font-bold text-xs border border-white/[0.12] flex items-center justify-center gap-2 transition-all"
+                  title="Если вы отсканировали QR системной камерой телефона и нажали «Копировать»"
+                >
+                  <ClipboardPaste size={16} className="text-[#38bdf8]" />
+                  <span>Вставить из буфера</span>
+                </button>
+              </div>
             </div>
 
             {/* ═════════ 2. MANUAL IP & NETWORK MODES ═════════ */}
@@ -419,7 +515,7 @@ export const SyncModal: React.FC = () => {
                   <input
                     type="text"
                     value={remoteHost}
-                    onChange={(e) => setRemoteHost(e.target.value)}
+                    onChange={(e) => handleRemoteHostChange(e.target.value)}
                     placeholder="192.168.148.173 или 192.168.1.15"
                     className="flex-1 px-3 py-2 rounded-xl bg-black/40 border border-white/[0.1] text-xs text-white font-mono placeholder:text-[#64748b] focus:outline-none focus:border-[#38bdf8]"
                   />
