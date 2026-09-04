@@ -93,18 +93,18 @@
 
 ---
 
-## 📥 Загрузка и Установка (Releases v1.0.0)
+## 📥 Загрузка и Установка (Releases v1.2.0)
 
-Официальные сборки доступны на странице **[GitHub Releases v1.0.0](https://github.com/hellmorvin/NyronNetbook/releases/tag/v1.0.0)**:
+Официальные сборки доступны на странице **[GitHub Releases v1.2.0](https://github.com/hellmorvin/NyronNetbook/releases/tag/v1.2.0)**:
 
 | Платформа | Формат пакета | Прямая ссылка | Описание |
 | :--- | :--- | :--- | :--- |
-| 🪟 **Windows 10 / 11** | `.exe` (Portable) | **[Скачать для Windows (.exe)](https://github.com/hellmorvin/NyronNetbook/releases/download/v1.0.0/NeyroNetbook.1.0.0.exe)** | Автономный запуск x64 без установки |
-| 📱 **Android** | `.apk` (Signed) | **[Скачать для Android (.apk)](https://github.com/hellmorvin/NyronNetbook/releases/download/v1.0.0/NeyroNetbook.apk)** | Мобильный релизный APK (Android 8.0 - 15+) |
-| 🪟 **Windows (Zip)** | `.zip` (Archive) | **[Скачать для Windows (.zip)](https://github.com/hellmorvin/NyronNetbook/releases/download/v1.0.0/NeyroNetbook-1.0.0-win.zip)** | Полный архив программы в zip |
-| 🐧 **Linux** | `.AppImage` / `.deb` | **[Страница релиза v1.0.0](https://github.com/hellmorvin/NyronNetbook/releases/tag/v1.0.0)** | Ubuntu, Debian, Fedora, Arch Linux |
-| 🍏 **macOS (Apple)** | `.dmg` / `.zip` | **[Страница релиза v1.0.0](https://github.com/hellmorvin/NyronNetbook/releases/tag/v1.0.0)** | Apple Silicon (M1-M4) и Intel x64 |
-| 🍎 **iOS (Apple)** | `Xcode Workspace` | **[Исходный проект iOS](https://github.com/hellmorvin/NyronNetbook/tree/main/packages/mobile/ios)** | Проект для компиляции в Xcode на iPhone / iPad |
+| 🪟 **Windows 10 / 11** | `.exe` (Portable) | **[Скачать для Windows (.exe)](https://github.com/hellmorvin/NyronNetbook/releases/download/v1.2.0/NeyroNetbook.1.2.0.exe)** | Автономный запуск x64 без установки |
+| 📱 **Android** | `.apk` (Signed) | **[Скачать для Android (.apk)](https://github.com/hellmorvin/NyronNetbook/releases/download/v1.2.0/NeyroNetbook.apk)** | Мобильный релизный APK (Android 8.0 - 15+) |
+| 🪟 **Windows (Zip)** | `.zip` (Archive) | **[Скачать для Windows (.zip)](https://github.com/hellmorvin/NyronNetbook/releases/download/v1.2.0/NeyroNetbook-1.2.0-win.zip)** | Полный архив программы в zip |
+| 🐧 **Linux** | `.tar.gz` / `.AppImage` / `.deb` | **[Скачать для Linux (.tar.gz)](https://github.com/hellmorvin/NyronNetbook/releases/download/v1.2.0/NeyroNetbook-1.2.0-linux-x64.tar.gz)** | Standalone x64 для Ubuntu, Debian, Fedora, Arch |
+| 🍏 **macOS (Apple)** | `.dmg` / `.zip` | **[Страница релиза v1.2.0](https://github.com/hellmorvin/NyronNetbook/releases/tag/v1.2.0)** | Apple Silicon (M1-M4) и Intel x64 |
+| 🍎 **iOS (Apple)** | `.zip` (Xcode Workspace) | **[Скачать архив iOS (.zip)](https://github.com/hellmorvin/NyronNetbook/releases/download/v1.2.0/NeyroNetbook-iOS-v1.2.0.zip)** | Проект для компиляции в Xcode на iPhone / iPad |
 
 ---
 
@@ -271,8 +271,8 @@ npm run open:ios            # 🍎 Открытие проекта в Xcode дл
 # Сборка пакетов AppImage и DEB:
 npm run build:linux
 # Готовые дистрибутивы будут сгенерированы в папке release/:
-# ➜ NeyroNetbook-1.0.0.AppImage
-# ➜ neyronetbook_1.0.0_amd64.deb
+# ➜ NeyroNetbook-1.2.0.AppImage
+# ➜ neyronetbook_1.2.0_amd64.deb
 ```
 
 ### 🍎 Сборка для iOS (iPhone / iPad):

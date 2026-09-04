@@ -1,0 +1,174 @@
+name: Multi-Platform Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+  actions: read
+
+jobs:
+  build-windows:
+    name: Build Windows Release
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install --include=dev
+
+      - name: Build Shared & Desktop Windows
+        run: |
+          npm run build:shared
+          npm run build:desktop:win
+
+      - name: Upload Windows Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release
+          path: |
+            release/*.exe
+            release/*-win.zip
+
+  build-linux:
+    name: Build Linux Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install --include=dev
+
+      - name: Build Shared & Desktop Linux
+        run: |
+          npm run build:shared
+          npm run build:desktop:linux
+
+      - name: Upload Linux Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-release
+          path: |
+            release/*.AppImage
+            release/*.deb
+            release/*.tar.gz
+
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: npm install --include=dev
+
+      - name: Build Shared & Mobile Web Assets
+        run: |
+          npm run build:shared
+          npm run build:mobile
+
+      - name: Sync Capacitor Android
+        working-directory: packages/mobile
+        run: npx cap sync android
+
+      - name: Build Android Release APK
+        working-directory: packages/mobile/android
+        run: ./gradlew assembleRelease
+
+      - name: Copy & Rename APK
+        run: |
+          mkdir -p release
+          cp packages/mobile/android/app/build/outputs/apk/release/app-release.apk release/NeyroNetbook.apk
+
+      - name: Upload Android Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release
+          path: release/NeyroNetbook.apk
+
+  publish-release:
+    name: Publish GitHub Release
+    needs: [build-windows, build-linux, build-android]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Download Windows Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-release
+          path: release
+
+      - name: Download Linux Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-release
+          path: release
+
+      - name: Download Android Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: android-release
+          path: release
+
+      - name: Publish Release to GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          name: 'НейроноБлокнот v1.2.0 — Официальный Кроссплатформенный Релиз 🧠'
+          body: |
+            ## 🧠 NeyroNetbook v1.2.0 Official Multiplatform Release
+            
+            Ваш персональный цифровой мозг, интерактивный D3 нейро-граф знаний, сменный календарь, финансовый менеджер и прямая офлайн P2P-синхронизация.
+            
+            ### 🚀 Главные нововведения v1.2.0:
+            - **⚡ LAN P2P Синхронизация**: прямой защищенный обмен базой знаний между ПК и мобильными устройствами по локальной сети Wi-Fi/Hotspot без интернета.
+            - **🛡️ Вечное Хранилище (Eternal Vault Persistence)**: надежная запись `vault_state.json` и экспорт всех заметок в чистый Markdown `.md`.
+            - **📊 Глубокая финансовая аналитика и Инспектор Дня**: быстрый просмотр смен по двойному тапу, инспектор заработка в свободном пространстве, гибкий финансовый модуль.
+            - **📱 Кроссплатформенность**: полная оптимизация для Windows (x64 Portable/Zip), Android (Signed APK), Linux (AppImage/Deb), и подготовка проекта для Apple iOS.
+            - **🎨 Версия 1.2.0 Pro**: обновление брендинга, улучшенная эргономика, фиксы форматирования и калькуляторов.
+            
+            ### 📦 Файлы релиза:
+            - **Windows**: `NeyroNetbook 1.2.0.exe` (Portable), `NeyroNetbook-1.2.0-win.zip`
+            - **Android**: `NeyroNetbook.apk` (Signed APK для Android 8.0 — 15+)
+            - **Linux**: `NeyroNetbook-1.2.0.AppImage`, `neyronetbook_1.2.0_amd64.deb`
+            - **iOS**: Нативный Xcode проект в каталоге `packages/mobile/ios`
+          files: |
+            release/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
