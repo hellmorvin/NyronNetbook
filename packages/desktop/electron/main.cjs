@@ -422,7 +422,7 @@ function createWindow() {
     minHeight: 700,
     backgroundColor: '#181818',
     frame: false,
-    title: 'NyronNotebook',
+    title: 'Nyron',
     icon: appIcon,
     autoHideMenuBar: true,
     webPreferences: {

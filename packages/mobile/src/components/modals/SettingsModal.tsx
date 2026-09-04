@@ -765,7 +765,7 @@ export const SettingsModal: React.FC = () => {
                   <NeuralNotebookLogo size={56} glow animated={false} />
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-bold text-white tracking-tight">NeyroNetbook</h3>
+                      <h3 className="text-lg font-bold text-white tracking-tight">Nyron</h3>
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#7c5cff]/20 text-[#7c5cff] border border-[#7c5cff]/30">
                         v1.1.0 Pro
                       </span>

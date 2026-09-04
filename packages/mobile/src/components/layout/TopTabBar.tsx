@@ -72,11 +72,11 @@ export const TopTabBar: React.FC = () => {
         <button
           onClick={() => openTab({ type: 'graph', title: 'Граф' })}
           className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-white/[0.08] transition-all cursor-pointer group"
-          title="NyronNotebook"
+          title="Nyron"
         >
           <NeuralNotebookLogo size={20} animated={false} glow={false} />
           <span className="text-xs font-bold text-white tracking-wide group-hover:text-[#7c5cff] transition-colors">
-            НейроноБлокнот
+            Nyron
           </span>
         </button>
 
