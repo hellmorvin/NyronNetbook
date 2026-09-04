@@ -130,6 +130,16 @@ export const FinanceManagerView: React.FC = () => {
   const [isHeaderKpiVisible, setIsHeaderKpiVisible] = useState(true);
   const [isSidebarCategoriesVisible, setIsSidebarCategoriesVisible] = useState(true);
 
+  // Privacy eye toggle state (hide balances in public)
+  const [isPrivacyMode, setIsPrivacyMode] = useState(false);
+
+  // Helper for privacy-aware formatting
+  const formatMoney = (amount: number, sign: boolean = false) => {
+    if (isPrivacyMode) return '••••••';
+    const s = sign ? (amount >= 0 ? '+' : '') : '';
+    return `${s}${amount.toLocaleString('ru-RU')} ₽`;
+  };
+
   // Modals state
   const [isAddTxModalOpen, setIsAddTxModalOpen] = useState(false);
   const [modalTxType, setModalTxType] = useState<TransactionType>('expense');
@@ -605,6 +615,41 @@ export const FinanceManagerView: React.FC = () => {
       });
   }, [tableTransactions, filterType, selectedCategory, searchQuery, sortBy]);
 
+  // Date-Grouped Transactions for Mobile Feed Display
+  const groupedMobileTransactions = useMemo(() => {
+    const map = new Map<string, typeof filteredTransactions>();
+
+    filteredTransactions.forEach((tx) => {
+      const list = map.get(tx.date) || [];
+      list.push(tx);
+      map.set(tx.date, list);
+    });
+
+    const sortedDates = Array.from(map.keys()).sort((a, b) => b.localeCompare(a));
+    const today = toLocalDateStr();
+    const yesterday = toLocalDateStr(new Date(Date.now() - 86400000));
+
+    return sortedDates.map((dStr) => {
+      const items = map.get(dStr)!;
+      let label = '';
+      if (dStr === today) {
+        label = 'Сегодня';
+      } else if (dStr === yesterday) {
+        label = 'Вчера';
+      } else {
+        try {
+          const dObj = new Date(dStr + 'T12:00:00');
+          label = dObj.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short' });
+        } catch {
+          label = dStr;
+        }
+      }
+
+      const dayTotal = items.reduce((acc, t) => acc + (t.type === 'income' ? t.amount : -t.amount), 0);
+      return { date: dStr, label, items, dayTotal };
+    });
+  }, [filteredTransactions]);
+
   const handleCreateTransaction = (e: React.FormEvent) => {
     e.preventDefault();
     const amountNum = Number(modalTxAmount);
@@ -751,13 +796,13 @@ export const FinanceManagerView: React.FC = () => {
               <FileText size={14} />
             </button>
 
-            {/* Toggle Header KPI */}
+            {/* Privacy Eye Toggle */}
             <button
-              onClick={() => setIsHeaderKpiVisible((v) => !v)}
+              onClick={() => setIsPrivacyMode((v) => !v)}
               className="p-1.5 rounded-xl bg-[#161720] border border-white/[0.08] text-[#94a3b8] hover:text-white transition-colors active:scale-95"
-              title={isHeaderKpiVisible ? 'Скрыть панель статистики' : 'Показать панель статистики'}
+              title={isPrivacyMode ? 'Показать баланс' : 'Скрыть баланс (Режим приватности)'}
             >
-              {isHeaderKpiVisible ? <EyeOff size={14} /> : <Eye size={14} />}
+              {isPrivacyMode ? <EyeOff size={14} className="text-[#f59e0b]" /> : <Eye size={14} />}
             </button>
           </div>
         </div>
@@ -815,45 +860,148 @@ export const FinanceManagerView: React.FC = () => {
           </button>
         </div>
 
-        {/* Mobile Hero Balance Card */}
-        {isHeaderKpiVisible && (
-          <div className="flex md:hidden flex-col p-3.5 bg-gradient-to-br from-[#181926] to-[#12131c] border border-white/[0.08] rounded-2xl shadow-lg gap-2.5">
+        {/* Mobile-First Hero Balance Card & 4 Big Quick Actions (Tinkoff / Revolut style) */}
+        <div className="flex md:hidden flex-col gap-2.5">
+          {/* Hero Balance Card */}
+          <div className="p-4 bg-gradient-to-br from-[#1a1b29] via-[#141522] to-[#10111a] border border-white/[0.10] rounded-2xl shadow-xl space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-[10px] uppercase font-bold text-[#94a3b8] tracking-wider">
                 Чистый остаток (Баланс)
               </span>
-              <span className="text-[10px] text-[#10b981] font-semibold flex items-center gap-1">
+              <span className="px-2 py-0.5 rounded-full bg-[#10b981]/15 text-[#10b981] border border-[#10b981]/30 text-[10px] font-bold flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
                 {stats.savingsRate}% сохранено
               </span>
             </div>
-            
-            <div className="text-2xl font-black font-mono tracking-tight text-white">
-              {stats.netSavings >= 0 ? '+' : ''}{stats.netSavings.toLocaleString('ru-RU')} ₽
+
+            <div className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-white">
+              {formatMoney(stats.netSavings, true)}
             </div>
 
-            <div className="grid grid-cols-3 gap-1.5 pt-1 border-t border-white/[0.06] text-center">
-              <div className="p-1.5 rounded-xl bg-black/20">
-                <span className="text-[9px] text-[#94a3b8] block">Доходы</span>
-                <span className="text-xs font-extrabold text-[#10b981] font-mono block truncate">
-                  +{stats.totalIncome.toLocaleString('ru-RU')} ₽
+            <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/[0.06] text-center">
+              <div className="p-2 rounded-xl bg-black/30 border border-white/[0.04]">
+                <span className="text-[9px] text-[#94a3b8] block uppercase font-semibold">Доходы</span>
+                <span className="text-xs font-black text-[#10b981] font-mono block truncate mt-0.5">
+                  {formatMoney(stats.totalIncome, true)}
                 </span>
               </div>
-              <div className="p-1.5 rounded-xl bg-black/20">
-                <span className="text-[9px] text-[#94a3b8] block">Расходы</span>
-                <span className="text-xs font-extrabold text-[#f43f5e] font-mono block truncate">
-                  -{stats.totalExpense.toLocaleString('ru-RU')} ₽
+              <div className="p-2 rounded-xl bg-black/30 border border-white/[0.04]">
+                <span className="text-[9px] text-[#94a3b8] block uppercase font-semibold">Расходы</span>
+                <span className="text-xs font-black text-[#f43f5e] font-mono block truncate mt-0.5">
+                  {formatMoney(-stats.totalExpense)}
                 </span>
               </div>
-              <div className="p-1.5 rounded-xl bg-black/20">
-                <span className="text-[9px] text-[#94a3b8] block">Со смен</span>
-                <span className="text-xs font-extrabold text-[#38bdf8] font-mono block truncate">
-                  +{shiftStats.totalEarnings.toLocaleString('ru-RU')} ₽
+              <div className="p-2 rounded-xl bg-black/30 border border-white/[0.04]">
+                <span className="text-[9px] text-[#94a3b8] block uppercase font-semibold">Со смен</span>
+                <span className="text-xs font-black text-[#38bdf8] font-mono block truncate mt-0.5">
+                  {formatMoney(shiftStats.totalEarnings, true)}
                 </span>
               </div>
             </div>
           </div>
-        )}
+
+          {/* 4 Big 1-Tap Quick Action Buttons */}
+          <div className="grid grid-cols-4 gap-2">
+            <button
+              onClick={() => {
+                setModalTxType('income');
+                setModalTxCategory('Зарплата');
+                setIsAddTxModalOpen(true);
+              }}
+              className="flex flex-col items-center justify-center p-2 rounded-2xl bg-[#10b981]/15 border border-[#10b981]/25 hover:bg-[#10b981]/25 transition-all active:scale-95 text-center shadow-sm"
+            >
+              <div className="w-8 h-8 rounded-full bg-[#10b981]/25 text-[#10b981] flex items-center justify-center mb-1">
+                <ArrowUpRight size={16} strokeWidth={2.5} />
+              </div>
+              <span className="text-[11px] font-bold text-white leading-tight">+ Доход</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setModalTxType('expense');
+                setModalTxCategory('Еда/Продукты');
+                setIsAddTxModalOpen(true);
+              }}
+              className="flex flex-col items-center justify-center p-2 rounded-2xl bg-[#f43f5e]/15 border border-[#f43f5e]/25 hover:bg-[#f43f5e]/25 transition-all active:scale-95 text-center shadow-sm"
+            >
+              <div className="w-8 h-8 rounded-full bg-[#f43f5e]/25 text-[#f43f5e] flex items-center justify-center mb-1">
+                <ArrowDownRight size={16} strokeWidth={2.5} />
+              </div>
+              <span className="text-[11px] font-bold text-white leading-tight">- Расход</span>
+            </button>
+
+            <button
+              onClick={() => setIsGoalModalOpen(true)}
+              className="flex flex-col items-center justify-center p-2 rounded-2xl bg-[#8b5cf6]/15 border border-[#8b5cf6]/25 hover:bg-[#8b5cf6]/25 transition-all active:scale-95 text-center shadow-sm"
+            >
+              <div className="w-8 h-8 rounded-full bg-[#8b5cf6]/25 text-[#8b5cf6] flex items-center justify-center mb-1">
+                <IconTargetGoal size={16} color="#8b5cf6" />
+              </div>
+              <span className="text-[11px] font-bold text-white leading-tight">🎯 Цель</span>
+            </button>
+
+            <button
+              onClick={() => setIsDepositModalOpen(true)}
+              className="flex flex-col items-center justify-center p-2 rounded-2xl bg-[#f59e0b]/15 border border-[#f59e0b]/25 hover:bg-[#f59e0b]/25 transition-all active:scale-95 text-center shadow-sm"
+            >
+              <div className="w-8 h-8 rounded-full bg-[#f59e0b]/25 text-[#f59e0b] flex items-center justify-center mb-1">
+                <IconBankDeposit size={16} color="#f59e0b" />
+              </div>
+              <span className="text-[11px] font-bold text-white leading-tight">🏦 Вклад</span>
+            </button>
+          </div>
+
+          {/* Mobile Segmented Tab Switcher (Equal width, no overflowing horizontal scroll) */}
+          <div className="flex bg-[#14151c] p-1 rounded-2xl border border-white/[0.08] text-xs shadow-sm">
+            <button
+              onClick={() => setActiveTab('transactions')}
+              className={`flex-1 py-2 rounded-xl font-bold flex flex-col sm:flex-row items-center justify-center gap-1 transition-all ${
+                activeTab === 'transactions'
+                  ? 'bg-[#7c5cff] text-white shadow-md'
+                  : 'text-[#94a3b8] hover:text-white'
+              }`}
+            >
+              <CreditCard size={13} />
+              <span className="truncate">Операции</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('analytics')}
+              className={`flex-1 py-2 rounded-xl font-bold flex flex-col sm:flex-row items-center justify-center gap-1 transition-all ${
+                activeTab === 'analytics'
+                  ? 'bg-[#7c5cff] text-white shadow-md'
+                  : 'text-[#94a3b8] hover:text-white'
+              }`}
+            >
+              <BarChart3 size={13} />
+              <span className="truncate">Аналитика</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('goals')}
+              className={`flex-1 py-2 rounded-xl font-bold flex flex-col sm:flex-row items-center justify-center gap-1 transition-all ${
+                activeTab === 'goals'
+                  ? 'bg-[#7c5cff] text-white shadow-md'
+                  : 'text-[#94a3b8] hover:text-white'
+              }`}
+            >
+              <IconTargetGoal size={13} color="currentColor" />
+              <span className="truncate">Копилка</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('deposits')}
+              className={`flex-1 py-2 rounded-xl font-bold flex flex-col sm:flex-row items-center justify-center gap-1 transition-all ${
+                activeTab === 'deposits'
+                  ? 'bg-[#7c5cff] text-white shadow-md'
+                  : 'text-[#94a3b8] hover:text-white'
+              }`}
+            >
+              <IconBankDeposit size={13} color="currentColor" />
+              <span className="truncate">Вклады</span>
+            </button>
+          </div>
+        </div>
 
         {/* Row 2: Desktop Detailed KPI Cards Banner */}
         {isHeaderKpiVisible && (
@@ -947,8 +1095,8 @@ export const FinanceManagerView: React.FC = () => {
           </div>
         )}
 
-        {/* Row 3: Navigation Tab Switcher (Transactions / Goals / Deposits) */}
-        <div className="flex items-center justify-between pt-1">
+        {/* Row 3: Desktop Navigation Tab Switcher */}
+        <div className="hidden md:flex items-center justify-between pt-1">
           <div className="flex items-center p-0.5 bg-[#14151c] border border-white/[0.08] rounded-xl text-xs overflow-x-auto no-scrollbar shrink-0">
             <button
               onClick={() => setActiveTab('transactions')}
@@ -1316,8 +1464,98 @@ export const FinanceManagerView: React.FC = () => {
                 </div>
               )}
 
-              {/* Transactions Table Container */}
-              <div className="flex-1 overflow-y-auto rounded-2xl border border-white/[0.08] bg-[#14151c]">
+              {/* Mobile-First Date-Grouped Transaction Feed (Tinkoff/Revolut card style) */}
+              <div className="md:hidden flex-1 overflow-y-auto space-y-3 pb-8">
+                {groupedMobileTransactions.length === 0 ? (
+                  <div className="p-8 rounded-2xl bg-[#14151c] border border-white/[0.06] text-center space-y-3">
+                    <div className="w-12 h-12 rounded-2xl bg-white/[0.04] text-[#94a3b8] flex items-center justify-center mx-auto">
+                      <CreditCard size={24} />
+                    </div>
+                    <p className="text-sm font-semibold text-white">В этом месяце нет операций</p>
+                    <p className="text-xs text-[#94a3b8]">Добавьте первый доход или расход кнопками сверху</p>
+                  </div>
+                ) : (
+                  groupedMobileTransactions.map(({ date, label, items, dayTotal }) => (
+                    <div key={date} className="space-y-1.5">
+                      {/* Date Group Header */}
+                      <div className="flex items-center justify-between px-1 text-xs">
+                        <span className="font-bold text-[#94a3b8] capitalize">{label}</span>
+                        {dayTotal !== 0 && (
+                          <span className={`font-mono text-[11px] font-semibold ${dayTotal > 0 ? 'text-[#10b981]' : 'text-[#f43f5e]'}`}>
+                            {dayTotal > 0 ? '+' : ''}{dayTotal.toLocaleString('ru-RU')} ₽
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Items List */}
+                      <div className="rounded-2xl bg-[#14151c] border border-white/[0.08] divide-y divide-white/[0.04] overflow-hidden shadow-sm">
+                        {items.map((tx) => {
+                          const isInc = tx.type === 'income';
+                          const color = CATEGORY_COLORS[tx.category] || '#94a3b8';
+
+                          return (
+                            <div key={tx.id} className="p-3 flex items-center justify-between gap-3 active:bg-white/[0.02] transition-colors">
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div
+                                  className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                                  style={{ backgroundColor: `${color}20` }}
+                                >
+                                  {isInc ? (
+                                    <ArrowUpRight size={16} color={color} strokeWidth={2.5} />
+                                  ) : (
+                                    <ArrowDownRight size={16} color={color} strokeWidth={2.5} />
+                                  )}
+                                </div>
+
+                                <div className="min-w-0">
+                                  <span className="text-xs font-bold text-white block truncate">
+                                    {tx.description || tx.category}
+                                  </span>
+                                  <div className="flex items-center gap-1.5 text-[10px] text-[#94a3b8] mt-0.5">
+                                    <span className="font-medium">{tx.category}</span>
+                                    <span>•</span>
+                                    <span>{tx.paymentMethod || 'Карта'}</span>
+                                    {tx.isAutoCalendar && (
+                                      <span className="px-1 rounded bg-[#8b5cf6]/20 text-[#a78bfa] text-[9px] font-bold">
+                                        Календарь
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className={`text-xs font-mono font-extrabold ${isInc ? 'text-[#10b981]' : 'text-[#f43f5e]'}`}>
+                                  {formatMoney(isInc ? tx.amount : -tx.amount, true)}
+                                </span>
+
+                                <button
+                                  onClick={() => {
+                                    if (tx.isShift) {
+                                      deleteShift(tx.date);
+                                    } else if (tx.eventId) {
+                                      deleteCalendarEvent(tx.eventId);
+                                    } else {
+                                      deleteTransaction(tx.id);
+                                    }
+                                  }}
+                                  className="p-1.5 rounded-lg text-[#64748b] hover:text-[#f43f5e] active:scale-90 transition-all"
+                                  title="Удалить"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Desktop Transactions Table Container */}
+              <div className="hidden md:block flex-1 overflow-y-auto rounded-2xl border border-white/[0.08] bg-[#14151c]">
                 <table className="w-full text-xs text-left">
                   <thead className="bg-[#191a22] text-[#94a3b8] uppercase font-bold text-[10px] tracking-wider border-b border-white/[0.08] sticky top-0 z-10">
                     <tr>
@@ -1527,7 +1765,7 @@ export const FinanceManagerView: React.FC = () => {
             />
 
             {/* Category Expenses Breakdown Section */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="p-5 bg-[#14151c] border border-white/[0.08] rounded-2xl space-y-3">
                 <h4 className="text-xs font-bold text-white flex items-center gap-2">
                   <PieChart size={14} className="text-[#ec4899]" />
@@ -1640,7 +1878,7 @@ export const FinanceManagerView: React.FC = () => {
             </div>
 
             {/* Goals Cards Grid */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
               {savingsGoals.map((goal) => {
                 const percent = Math.min(
                   100,

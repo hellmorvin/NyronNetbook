@@ -630,6 +630,23 @@ export const CalendarShiftView: React.FC = () => {
     showToast(`График успешно построен на ${genDaysCount} дней (${generatorPreview?.workDays || 0} рабочих смен)!`);
   };
 
+  // Mobile double-tap detection ref
+  const lastTapRef = React.useRef<{ date: string; time: number }>({ date: '', time: 0 });
+
+  // Handle cell click with double-tap detector for mobile
+  const handleCellClick = (dateStr: string) => {
+    const now = Date.now();
+    if (lastTapRef.current.date === dateStr && now - lastTapRef.current.time < 380) {
+      setSelectedDateStr(dateStr);
+      setMobileAddTab('shift');
+      setIsMobileAddModalOpen(true);
+      lastTapRef.current = { date: '', time: 0 };
+      return;
+    }
+    lastTapRef.current = { date: dateStr, time: now };
+    handleDayClick(dateStr);
+  };
+
   // Instant Paint Brush or Eraser Click Handler
   const handleDayClick = (dateStr: string) => {
     if (activePaintBrush === 'eraser') {
@@ -1168,7 +1185,12 @@ export const CalendarShiftView: React.FC = () => {
               return (
                 <div
                   key={dateStr}
-                  onClick={() => handleDayClick(dateStr)}
+                  onClick={() => handleCellClick(dateStr)}
+                  onDoubleClick={() => {
+                    setSelectedDateStr(dateStr);
+                    setMobileAddTab('shift');
+                    setIsMobileAddModalOpen(true);
+                  }}
                   onMouseDown={(e) => {
                     if (e.button === 0) {
                       setIsMouseDown(true);
@@ -1226,12 +1248,12 @@ export const CalendarShiftView: React.FC = () => {
                   {/* Middle / Bottom Content: Compact & Non-Overflowing */}
                   <div className="flex flex-col gap-0.5 mt-auto pt-0.5 overflow-hidden">
                     {shift && shift.type !== 'off' && shift.type !== 'vacation' && (
-                      <div className="flex items-center justify-between text-[9px] font-mono font-semibold leading-none gap-0.5 overflow-hidden">
-                        <span className="text-[#38bdf8] truncate shrink-0">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between text-[9px] font-mono font-semibold leading-tight gap-0.5 overflow-hidden">
+                        <span className="text-[#38bdf8] shrink-0">
                           {shift.hours}ч
                         </span>
-                        <span className="text-[#10b981] font-bold truncate">
-                          +{shift.earnings >= 10000 ? Math.round(shift.earnings / 1000) + 'к' : shift.earnings}
+                        <span className="text-[#10b981] font-bold shrink-0">
+                          +{shift.earnings >= 1000 ? ((shift.earnings / 1000).toFixed(shift.earnings % 1000 === 0 ? 0 : 1) + 'к') : shift.earnings}
                         </span>
                       </div>
                     )}
@@ -1258,6 +1280,257 @@ export const CalendarShiftView: React.FC = () => {
                 </div>
               );
             })}
+          </div>
+
+          {/* Mobile Selected Day Inspector & Monthly Totals Dashboard (fills empty bottom space) */}
+          <div className="md:hidden mt-3 space-y-3">
+            {/* Card 1: Selected Day Full Details */}
+            <div className="p-3.5 rounded-2xl bg-[#14151c] border border-white/[0.08] shadow-lg space-y-3">
+              {/* Header of selected day */}
+              <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-[#8b5cf6]/20 text-[#8b5cf6] border border-[#8b5cf6]/30 flex items-center justify-center font-bold text-xs">
+                    {new Date(selectedDateStr + 'T12:00:00').getDate()}
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-white capitalize">
+                      {new Date(selectedDateStr + 'T12:00:00').toLocaleDateString('ru-RU', {
+                        weekday: 'short',
+                        day: 'numeric',
+                        month: 'long',
+                      })}
+                    </h4>
+                    <span className="text-[10px] text-[#94a3b8]">
+                      {selectedDateStr === toLocalDateStr() ? '🌟 Сегодня' : 'Выбранный день'}
+                    </span>
+                  </div>
+                </div>
+
+                {selectedShift ? (
+                  <span
+                    className="px-2.5 py-1 rounded-xl text-[11px] font-bold border flex items-center gap-1 shadow-sm"
+                    style={{
+                      backgroundColor: SHIFT_TYPE_CONFIG[selectedShift.type]?.bg || 'rgba(139, 92, 246, 0.15)',
+                      color: SHIFT_TYPE_CONFIG[selectedShift.type]?.color || '#8b5cf6',
+                      borderColor: SHIFT_TYPE_CONFIG[selectedShift.type]?.border || 'rgba(139, 92, 246, 0.3)',
+                    }}
+                  >
+                    {React.createElement(SHIFT_TYPE_CONFIG[selectedShift.type]?.icon || IconDayShift, { size: 12, color: SHIFT_TYPE_CONFIG[selectedShift.type]?.color })}
+                    <span>{SHIFT_TYPE_CONFIG[selectedShift.type]?.label || selectedShift.type}</span>
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-lg text-[10px] font-medium bg-white/[0.04] text-[#94a3b8] border border-white/[0.06]">
+                    Нет смены
+                  </span>
+                )}
+              </div>
+
+              {/* Shift Details or Empty Prompt */}
+              {selectedShift ? (
+                <div className="space-y-2.5">
+                  {selectedShift.type !== 'off' && selectedShift.type !== 'vacation' ? (
+                    <>
+                      {/* Earnings Hero Banner for this Day */}
+                      <div className="p-3 rounded-xl bg-gradient-to-br from-[#10b981]/15 to-[#06b6d4]/10 border border-[#10b981]/30 flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] uppercase font-bold text-[#94a3b8] block">
+                            Заработок за смену
+                          </span>
+                          <div className="text-xl font-black text-[#10b981] font-mono">
+                            +{selectedShift.earnings.toLocaleString('ru-RU')} ₽
+                          </div>
+                          <div className="text-[10px] text-[#94a3b8] font-mono mt-0.5">
+                            {selectedShift.hours}ч • {selectedShift.rateType === 'hourly' ? `${selectedShift.rate} ₽/ч` : 'Фикс. ставка'}
+                            {selectedShift.bonus > 0 && ` • Премия: +${selectedShift.bonus} ₽`}
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          {(() => {
+                            const exp = selectedShift.expense !== undefined ? selectedShift.expense : (selectedShift.roadExpense || 0) + (selectedShift.foodExpense || 0);
+                            const net = selectedShift.earnings - exp;
+                            return (
+                              <>
+                                <span className="text-[10px] uppercase font-bold text-[#94a3b8] block">Чистыми (Net)</span>
+                                <span className="text-sm font-extrabold text-[#38bdf8] font-mono">
+                                  {net.toLocaleString('ru-RU')} ₽
+                                </span>
+                                {exp > 0 && (
+                                  <div className="text-[9px] text-[#f43f5e] font-mono">Траты: -{exp} ₽</div>
+                                )}
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </div>
+
+                      {selectedShift.note && (
+                        <div className="p-2 rounded-xl bg-white/[0.03] border border-white/[0.06] text-xs text-[#cbd5e1] flex items-center gap-2">
+                          <FileText size={12} className="text-[#8b5cf6] shrink-0" />
+                          <span className="truncate">{selectedShift.note}</span>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-center text-xs text-[#94a3b8]">
+                      ☕ {selectedShift.type === 'vacation' ? 'Оплачиваемый отпуск' : 'Выходной день — отдых и восстановление'}
+                    </div>
+                  )}
+
+                  {/* Action Buttons for Shift */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        setMobileAddTab('shift');
+                        setIsMobileAddModalOpen(true);
+                      }}
+                      className="flex-1 py-2 px-3 rounded-xl bg-[#8b5cf6]/20 hover:bg-[#8b5cf6]/30 text-[#8b5cf6] border border-[#8b5cf6]/35 text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95"
+                    >
+                      <Sliders size={13} />
+                      <span>Редактировать смену</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        deleteShift(selectedDateStr);
+                        showToast('Смена удалена');
+                      }}
+                      className="p-2 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-[#f43f5e] border border-red-500/30 transition-all active:scale-95"
+                      title="Удалить смену"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+                  <span className="text-xs text-[#94a3b8]">Смена не назначена</span>
+                  <button
+                    onClick={() => {
+                      setMobileAddTab('shift');
+                      setIsMobileAddModalOpen(true);
+                    }}
+                    className="py-1.5 px-3 rounded-xl bg-[#8b5cf6] text-white text-xs font-bold flex items-center gap-1 shadow-md active:scale-95 transition-all"
+                  >
+                    <Plus size={13} />
+                    <span>Назначить смену</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Day Events / Tasks */}
+              <div className="pt-2 border-t border-white/[0.06] space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] uppercase font-bold text-[#94a3b8] tracking-wider">
+                    Дела и задачи ({selectedDayEvents.length})
+                  </span>
+                  <button
+                    onClick={() => {
+                      setMobileAddTab('event');
+                      setIsMobileAddModalOpen(true);
+                    }}
+                    className="text-[11px] text-[#10b981] font-bold flex items-center gap-1 hover:underline"
+                  >
+                    <Plus size={12} />
+                    <span>Добавить</span>
+                  </button>
+                </div>
+
+                {selectedDayEvents.length > 0 ? (
+                  <div className="space-y-1.5">
+                    {selectedDayEvents.map((ev) => (
+                      <div
+                        key={ev.id}
+                        className="p-2 rounded-xl bg-[#161722] border border-white/[0.06] flex items-center justify-between gap-2 text-xs"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <button
+                            onClick={() => toggleCalendarEvent(ev.id)}
+                            className={`w-5 h-5 rounded-lg border flex items-center justify-center shrink-0 transition-all ${
+                              ev.completed
+                                ? 'bg-[#10b981] border-[#10b981] text-black'
+                                : 'border-white/[0.2] bg-white/[0.04] text-transparent hover:border-[#10b981]'
+                            }`}
+                          >
+                            <Check size={12} strokeWidth={3} />
+                          </button>
+                          <div className="min-w-0">
+                            <span className={`block font-medium truncate ${ev.completed ? 'line-through text-[#64748b]' : 'text-white'}`}>
+                              {ev.title}
+                            </span>
+                            {ev.time && (
+                              <span className="text-[10px] text-[#94a3b8] font-mono">{ev.time}</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {ev.amount && (
+                            <span className="text-xs font-bold text-[#10b981] font-mono">
+                              {ev.amount.toLocaleString('ru-RU')} ₽
+                            </span>
+                          )}
+                          <button
+                            onClick={() => deleteCalendarEvent(ev.id)}
+                            className="p-1 rounded-lg text-[#64748b] hover:text-[#f43f5e]"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-[#64748b] italic">Нет запланированных дел на эту дату</p>
+                )}
+              </div>
+            </div>
+
+            {/* Card 2: Monthly Summary Totals Banner */}
+            <div className="p-3.5 rounded-2xl bg-gradient-to-br from-[#181926] to-[#12131c] border border-white/[0.08] shadow-lg space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] uppercase font-bold text-[#94a3b8] tracking-wider">
+                  Итоги за {MONTH_NAMES[month]} {year}
+                </span>
+                <button
+                  onClick={() => setIsReportModalOpen(true)}
+                  className="text-[11px] text-[#8b5cf6] font-bold flex items-center gap-1 hover:underline"
+                >
+                  <PieChart size={12} />
+                  <span>Полный отчет</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="p-2.5 rounded-xl bg-black/25 border border-white/[0.06]">
+                  <span className="text-[10px] text-[#94a3b8] block">Начислено (Gross)</span>
+                  <span className="text-base font-black text-[#10b981] font-mono">
+                    +{monthStats.totalEarnings.toLocaleString('ru-RU')} ₽
+                  </span>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-black/25 border border-white/[0.06]">
+                  <span className="text-[10px] text-[#94a3b8] block">Чистыми на руках</span>
+                  <span className="text-base font-black text-[#38bdf8] font-mono">
+                    {monthStats.netEarnings.toLocaleString('ru-RU')} ₽
+                  </span>
+                </div>
+
+                <div className="p-2 rounded-xl bg-black/25 border border-white/[0.06]">
+                  <span className="text-[9px] text-[#94a3b8] block">Смен отработано</span>
+                  <span className="text-xs font-bold text-white font-mono">
+                    {monthStats.workShiftsCount} ({monthStats.totalHours} ч.)
+                  </span>
+                </div>
+
+                <div className="p-2 rounded-xl bg-black/25 border border-white/[0.06]">
+                  <span className="text-[9px] text-[#94a3b8] block">Траты на смене</span>
+                  <span className="text-xs font-bold text-[#f43f5e] font-mono">
+                    -{monthStats.totalExpenses.toLocaleString('ru-RU')} ₽
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
