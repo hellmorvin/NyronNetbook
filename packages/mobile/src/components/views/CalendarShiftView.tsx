@@ -46,6 +46,11 @@ import {
 } from '../icons/CustomNeironoIcons';
 import { useBrainStore, ShiftType, WorkShift, CalendarEvent, EventCategory } from '../../store/useBrainStore';
 
+function sanitizeNumericInput(val: string): string {
+  const digits = val.replace(/\D/g, '');
+  return digits ? digits.replace(/^0+(?=\d)/, '') : '';
+}
+
 const SHIFT_TYPE_CONFIG: Record<
   ShiftType,
   { label: string; shortLabel: string; icon: React.ComponentType<{ size?: number; color?: string; className?: string }>; color: string; bg: string; border: string; desc: string }
@@ -2712,9 +2717,14 @@ export const CalendarShiftView: React.FC = () => {
                             {formRateType === 'hourly' ? 'Ставка (₽/ч)' : 'Ставка (₽)'}
                           </label>
                           <input
-                            type="number"
-                            value={formRate}
-                            onChange={(e) => setFormRate(Number(e.target.value))}
+                            type="text"
+                            inputMode="numeric"
+                            value={formRate || ''}
+                            onChange={(e) => {
+                              const clean = sanitizeNumericInput(e.target.value);
+                              setFormRate(clean ? Number(clean) : 0);
+                            }}
+                            placeholder="0"
                             className="w-full bg-[#111218] border border-white/[0.08] rounded-lg p-1.5 text-white font-mono text-xs focus:outline-none focus:border-[#8b5cf6]"
                           />
                         </div>
@@ -2723,9 +2733,13 @@ export const CalendarShiftView: React.FC = () => {
                             Бонус (₽)
                           </label>
                           <input
-                            type="number"
-                            value={formBonus}
-                            onChange={(e) => setFormBonus(Number(e.target.value))}
+                            type="text"
+                            inputMode="numeric"
+                            value={formBonus || ''}
+                            onChange={(e) => {
+                              const clean = sanitizeNumericInput(e.target.value);
+                              setFormBonus(clean ? Number(clean) : 0);
+                            }}
                             placeholder="0"
                             className="w-full bg-[#111218] border border-white/[0.08] rounded-lg p-1.5 text-white font-mono text-xs focus:outline-none focus:border-[#8b5cf6]"
                           />

@@ -336,9 +336,9 @@ export const ObsidianNoteEditor: React.FC<ObsidianNoteEditorProps> = ({ noteId }
                 <span className="text-[10px] uppercase font-bold text-[#7c5cff] tracking-wider block mb-2">
                   Визуальный вид
                 </span>
-                <div
-                  className="prose-dark text-sm leading-relaxed"
-                  dangerouslySetInnerHTML={{ __html: neuron.content }}
+                <LiveDocumentView
+                  content={neuron.content}
+                  onChange={handleContentChange}
                 />
               </div>
             </div>

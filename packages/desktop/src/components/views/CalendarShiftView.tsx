@@ -176,6 +176,11 @@ const WEEKDAY_NAMES = [
   { short: 'Вс', full: 'Воскресенье' },
 ];
 
+function sanitizeNumericInput(val: string): string {
+  const digits = val.replace(/\D/g, '');
+  return digits ? digits.replace(/^0+(?=\d)/, '') : '';
+}
+
 function toLocalDateStr(d: Date = new Date()): string {
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -1357,18 +1362,27 @@ export const CalendarShiftView: React.FC = () => {
                       <div>
                         <label className="block text-[10px] text-[#94a3b8] mb-0.5 font-medium">Ставка (₽/ч или смену)</label>
                         <input
-                          type="number"
-                          value={formRate}
-                          onChange={(e) => setFormRate(Number(e.target.value))}
+                          type="text"
+                          inputMode="numeric"
+                          value={formRate || ''}
+                          onChange={(e) => {
+                            const clean = sanitizeNumericInput(e.target.value);
+                            setFormRate(clean ? Number(clean) : 0);
+                          }}
+                          placeholder="0"
                           className="w-full bg-[#161720] border border-white/[0.08] rounded-xl p-2 text-white font-mono text-xs focus:outline-none focus:border-[#8b5cf6]"
                         />
                       </div>
                       <div>
                         <label className="block text-[10px] text-[#94a3b8] mb-0.5 font-medium">Премия / бонус (₽)</label>
                         <input
-                          type="number"
-                          value={formBonus}
-                          onChange={(e) => setFormBonus(Number(e.target.value))}
+                          type="text"
+                          inputMode="numeric"
+                          value={formBonus || ''}
+                          onChange={(e) => {
+                            const clean = sanitizeNumericInput(e.target.value);
+                            setFormBonus(clean ? Number(clean) : 0);
+                          }}
                           placeholder="0"
                           className="w-full bg-[#161720] border border-white/[0.08] rounded-xl p-2 text-white font-mono text-xs focus:outline-none focus:border-[#8b5cf6]"
                         />
@@ -1387,9 +1401,13 @@ export const CalendarShiftView: React.FC = () => {
 
                       <div className="relative">
                         <input
-                          type="number"
+                          type="text"
+                          inputMode="numeric"
                           value={formExpense || ''}
-                          onChange={(e) => setFormExpense(Number(e.target.value) || 0)}
+                          onChange={(e) => {
+                            const clean = sanitizeNumericInput(e.target.value);
+                            setFormExpense(clean ? Number(clean) : 0);
+                          }}
                           placeholder="0"
                           className="w-full bg-[#111218] border border-white/[0.08] rounded-xl pl-3 pr-8 py-2 text-white font-mono text-xs focus:outline-none focus:border-[#8b5cf6]"
                         />
@@ -1576,9 +1594,10 @@ export const CalendarShiftView: React.FC = () => {
                   <div>
                     <label className="block text-[10px] text-[#94a3b8]">Сумма расхода (₽, если есть):</label>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
                       value={eventAmount}
-                      onChange={(e) => setEventAmount(e.target.value)}
+                      onChange={(e) => setEventAmount(sanitizeNumericInput(e.target.value))}
                       placeholder="1500"
                       className="w-full bg-[#111217] border border-white/[0.08] rounded-xl p-2 text-white font-mono text-xs focus:outline-none focus:border-[#8b5cf6]"
                     />
@@ -2128,9 +2147,14 @@ export const CalendarShiftView: React.FC = () => {
                     {genRateType === 'hourly' ? 'Ставка в час (₽/ч):' : 'Ставка за смену (₽):'}
                   </label>
                   <input
-                    type="number"
-                    value={genRate}
-                    onChange={(e) => setGenRate(Number(e.target.value) || 0)}
+                    type="text"
+                    inputMode="numeric"
+                    value={genRate || ''}
+                    onChange={(e) => {
+                      const clean = sanitizeNumericInput(e.target.value);
+                      setGenRate(clean ? Number(clean) : 0);
+                    }}
+                    placeholder="0"
                     className="w-full bg-[#111218] border border-white/[0.08] rounded-xl p-2 text-white font-mono font-bold focus:outline-none focus:border-[#8b5cf6]"
                   />
                 </div>
@@ -2138,9 +2162,14 @@ export const CalendarShiftView: React.FC = () => {
                 <div>
                   <label className="block text-[10px] text-[#94a3b8] mb-1 font-semibold">Часов в смене:</label>
                   <input
-                    type="number"
-                    value={genDayHours}
-                    onChange={(e) => setGenDayHours(Number(e.target.value) || 12)}
+                    type="text"
+                    inputMode="numeric"
+                    value={genDayHours || ''}
+                    onChange={(e) => {
+                      const clean = sanitizeNumericInput(e.target.value);
+                      setGenDayHours(clean ? Number(clean) : 12);
+                    }}
+                    placeholder="12"
                     className="w-full bg-[#111218] border border-white/[0.08] rounded-xl p-2 text-white font-mono focus:outline-none focus:border-[#8b5cf6]"
                   />
                 </div>
@@ -2242,9 +2271,14 @@ export const CalendarShiftView: React.FC = () => {
               <div>
                 <label className="block text-[#94a3b8] mb-1 font-medium">Ставка в час (₽/ч)</label>
                 <input
-                  type="number"
-                  value={shiftSettings.defaultHourlyRate}
-                  onChange={(e) => updateShiftSettings({ defaultHourlyRate: Number(e.target.value) })}
+                  type="text"
+                  inputMode="numeric"
+                  value={shiftSettings.defaultHourlyRate || ''}
+                  onChange={(e) => {
+                    const clean = sanitizeNumericInput(e.target.value);
+                    updateShiftSettings({ defaultHourlyRate: clean ? Number(clean) : 0 });
+                  }}
+                  placeholder="0"
                   className="w-full bg-[#161720] border border-white/[0.08] rounded-xl p-2 text-white font-mono focus:outline-none focus:border-[#8b5cf6]"
                 />
               </div>
@@ -2252,9 +2286,14 @@ export const CalendarShiftView: React.FC = () => {
               <div>
                 <label className="block text-[#94a3b8] mb-1 font-medium">Ставка за смену (₽)</label>
                 <input
-                  type="number"
-                  value={shiftSettings.defaultFixedRate}
-                  onChange={(e) => updateShiftSettings({ defaultFixedRate: Number(e.target.value) })}
+                  type="text"
+                  inputMode="numeric"
+                  value={shiftSettings.defaultFixedRate || ''}
+                  onChange={(e) => {
+                    const clean = sanitizeNumericInput(e.target.value);
+                    updateShiftSettings({ defaultFixedRate: clean ? Number(clean) : 0 });
+                  }}
+                  placeholder="0"
                   className="w-full bg-[#161720] border border-white/[0.08] rounded-xl p-2 text-white font-mono focus:outline-none focus:border-[#8b5cf6]"
                 />
               </div>

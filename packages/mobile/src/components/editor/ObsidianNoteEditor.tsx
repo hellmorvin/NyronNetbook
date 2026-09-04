@@ -318,7 +318,7 @@ export const ObsidianNoteEditor: React.FC<ObsidianNoteEditorProps> = ({ noteId }
               placeholder="Заголовок заметки..."
               className="w-full bg-transparent text-2xl font-bold text-white focus:outline-none placeholder:text-[#475569] tracking-tight px-1"
             />
-            <div className="grid grid-cols-2 gap-4 min-h-[500px]">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 min-h-[500px]">
               <div className="p-4 bg-[#101117]/70 border border-white/[0.08] rounded-2xl">
                 <span className="text-[10px] uppercase font-bold text-[#64748b] tracking-wider block mb-2">
                   Исходный код Markdown
@@ -328,17 +328,17 @@ export const ObsidianNoteEditor: React.FC<ObsidianNoteEditorProps> = ({ noteId }
                   value={neuron.content}
                   onChange={(e) => handleContentChange(e.target.value)}
                   placeholder="Код заметки..."
-                  className="w-full bg-transparent text-xs text-[#e2e8f0] leading-relaxed resize-none focus:outline-none font-mono selection:bg-[#7c5cff]/40 min-h-[460px]"
-                  rows={20}
+                  className="w-full bg-transparent text-xs text-[#e2e8f0] leading-relaxed resize-none focus:outline-none font-mono selection:bg-[#7c5cff]/40 min-h-[260px] md:min-h-[460px]"
+                  rows={14}
                 />
               </div>
-              <div className="p-4 bg-[#101117]/70 border border-white/[0.08] rounded-2xl overflow-y-auto">
+              <div className="p-4 bg-[#101117]/70 border border-white/[0.08] rounded-2xl overflow-y-auto min-h-[260px] md:min-h-[460px]">
                 <span className="text-[10px] uppercase font-bold text-[#7c5cff] tracking-wider block mb-2">
                   Визуальный вид
                 </span>
-                <div
-                  className="prose-dark text-sm leading-relaxed"
-                  dangerouslySetInnerHTML={{ __html: neuron.content }}
+                <LiveDocumentView
+                  content={neuron.content}
+                  onChange={handleContentChange}
                 />
               </div>
             </div>

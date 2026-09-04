@@ -54,6 +54,11 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Прочее': '#94a3b8',
 };
 
+function sanitizeNumericInput(val: string): string {
+  const digits = val.replace(/\D/g, '');
+  return digits ? digits.replace(/^0+(?=\d)/, '') : '';
+}
+
 function toLocalDateStr(d: Date = new Date()): string {
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -1978,11 +1983,12 @@ export const FinanceManagerView: React.FC = () => {
               <div>
                 <label className="block text-[#94a3b8] mb-1 font-medium">Сумма (₽)</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   required
                   autoFocus
                   value={modalTxAmount}
-                  onChange={(e) => setModalTxAmount(e.target.value)}
+                  onChange={(e) => setModalTxAmount(sanitizeNumericInput(e.target.value))}
                   placeholder="Например: 1500"
                   className="w-full bg-[#191a22] border border-white/[0.08] rounded-xl p-2.5 text-base font-bold text-white font-mono focus:outline-none focus:border-[#7c5cff]"
                 />
@@ -2102,10 +2108,11 @@ export const FinanceManagerView: React.FC = () => {
                 <div>
                   <label className="block text-[#94a3b8] mb-1 font-medium">Целевая сумма (₽)</label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     required
                     value={goalTargetAmount}
-                    onChange={(e) => setGoalTargetAmount(e.target.value)}
+                    onChange={(e) => setGoalTargetAmount(sanitizeNumericInput(e.target.value))}
                     placeholder="100 000"
                     className="w-full bg-[#191a22] border border-white/[0.08] rounded-xl p-2 text-white font-mono"
                   />
@@ -2113,9 +2120,10 @@ export const FinanceManagerView: React.FC = () => {
                 <div>
                   <label className="block text-[#94a3b8] mb-1 font-medium">Уже накоплено (₽)</label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     value={goalCurrentAmount}
-                    onChange={(e) => setGoalCurrentAmount(e.target.value)}
+                    onChange={(e) => setGoalCurrentAmount(sanitizeNumericInput(e.target.value))}
                     placeholder="0"
                     className="w-full bg-[#191a22] border border-white/[0.08] rounded-xl p-2 text-white font-mono"
                   />
@@ -2206,11 +2214,11 @@ export const FinanceManagerView: React.FC = () => {
                 <div>
                   <label className="block text-[#94a3b8] mb-1 font-medium">Ставка (% годовых)</label>
                   <input
-                    type="number"
-                    step="0.1"
+                    type="text"
+                    inputMode="decimal"
                     required
                     value={depRate}
-                    onChange={(e) => setDepRate(e.target.value)}
+                    onChange={(e) => setDepRate(sanitizeNumericInput(e.target.value))}
                     placeholder="18.5"
                     className="w-full bg-[#191a22] border border-white/[0.08] rounded-xl p-2 text-white font-mono"
                   />
@@ -2220,10 +2228,11 @@ export const FinanceManagerView: React.FC = () => {
               <div>
                 <label className="block text-[#94a3b8] mb-1 font-medium">Сумма вклада / баланс (₽)</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   required
                   value={depBalance}
-                  onChange={(e) => setDepBalance(e.target.value)}
+                  onChange={(e) => setDepBalance(sanitizeNumericInput(e.target.value))}
                   placeholder="200 000"
                   className="w-full bg-[#191a22] border border-white/[0.08] rounded-xl p-2.5 text-white font-mono text-base font-bold"
                 />
@@ -2294,11 +2303,12 @@ export const FinanceManagerView: React.FC = () => {
               <div>
                 <label className="block text-[#94a3b8] mb-1 font-medium">Сумма пополнения (₽)</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   required
                   autoFocus
                   value={depositGoalAmountInput}
-                  onChange={(e) => setDepositGoalAmountInput(e.target.value)}
+                  onChange={(e) => setDepositGoalAmountInput(sanitizeNumericInput(e.target.value))}
                   placeholder="5000"
                   className="w-full bg-[#191a22] border border-white/[0.08] rounded-xl p-2.5 text-base font-bold text-white font-mono focus:outline-none focus:border-[#7c5cff]"
                 />
@@ -2377,11 +2387,12 @@ export const FinanceManagerView: React.FC = () => {
                   Сумма {depositAdjustMode === 'replenish' ? 'пополнения' : 'снятия'} (₽)
                 </label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   required
                   autoFocus
                   value={depositAdjustAmount}
-                  onChange={(e) => setDepositAdjustAmount(e.target.value)}
+                  onChange={(e) => setDepositAdjustAmount(sanitizeNumericInput(e.target.value))}
                   placeholder="10000"
                   className="w-full bg-[#191a22] border border-white/[0.08] rounded-xl p-2.5 text-base font-bold text-white font-mono focus:outline-none focus:border-[#10b981]"
                 />
@@ -2530,11 +2541,12 @@ export const FinanceManagerView: React.FC = () => {
                 <div>
                   <label className="block text-[#94a3b8] mb-1 font-medium">Ставка (% годовых)</label>
                   <input
-                    type="number"
-                    step="0.1"
+                    type="text"
+                    inputMode="decimal"
                     required
                     value={depRate}
-                    onChange={(e) => setDepRate(e.target.value)}
+                    onChange={(e) => setDepRate(sanitizeNumericInput(e.target.value))}
+                    placeholder="18.5"
                     className="w-full bg-[#191a22] border border-white/[0.08] rounded-xl p-2 text-white font-mono"
                   />
                 </div>
@@ -2543,10 +2555,12 @@ export const FinanceManagerView: React.FC = () => {
               <div>
                 <label className="block text-[#94a3b8] mb-1 font-medium">Текущий баланс (₽)</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   required
                   value={depBalance}
-                  onChange={(e) => setDepBalance(e.target.value)}
+                  onChange={(e) => setDepBalance(sanitizeNumericInput(e.target.value))}
+                  placeholder="200 000"
                   className="w-full bg-[#191a22] border border-white/[0.08] rounded-xl p-2.5 text-white font-mono text-base font-bold"
                 />
               </div>
