@@ -6,7 +6,7 @@ import { MobileRightDrawer } from './components/mobile/MobileRightDrawer';
 import { MobileMoreSheet } from './components/mobile/MobileMoreSheet';
 
 import { ObsidianGraphView } from './components/graph/ObsidianGraphView';
-import { ObsidianCanvasView } from './components/views/ObsidianCanvasView';
+import { MobileCanvasView } from './components/views/MobileCanvasView';
 import { CalendarShiftView } from './components/views/CalendarShiftView';
 import { FinanceManagerView } from './components/views/FinanceManagerView';
 import { ObsidianNoteEditor } from './components/editor/ObsidianNoteEditor';
@@ -62,7 +62,7 @@ export const App: React.FC = () => {
   }, [themePreset, uiSettings, themeMode]);
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden flex flex-col bg-[#0d0e12] text-[#e2e8f0] select-none font-sans">
+    <div className="relative w-full h-[100dvh] max-w-full overflow-hidden flex flex-col bg-[#0d0e12] text-[#e2e8f0] select-none font-sans">
       {/* 1. Touch-Optimized Mobile Top Bar */}
       <ErrorBoundary fallbackTitle="Ошибка панели заголовка">
         <MobileTopBar
@@ -84,7 +84,7 @@ export const App: React.FC = () => {
           {/* Persistent Canvas View */}
           {visitedViews.has('canvas') && (
             <div className={`w-full h-full ${activeTab?.type === 'canvas' ? 'block' : 'hidden'}`}>
-              <ObsidianCanvasView />
+              <MobileCanvasView />
             </div>
           )}
 

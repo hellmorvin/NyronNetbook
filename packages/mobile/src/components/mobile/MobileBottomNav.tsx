@@ -60,10 +60,10 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ onOpenMoreMenu
     },
     {
       id: 'calendar',
-      label: 'Смены',
+      label: 'Календарь',
       icon: <Calendar size={20} />,
       isActive: activeType === 'calendar',
-      onClick: () => openTab({ type: 'calendar', title: 'Смены' }),
+      onClick: () => openTab({ type: 'calendar', title: 'Календарь' }),
     },
     {
       id: 'finance',

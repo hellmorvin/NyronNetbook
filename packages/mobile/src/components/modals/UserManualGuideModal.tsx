@@ -40,140 +40,140 @@ import { useBrainStore } from '../../store/useBrainStore';
 export const UserManualGuideModal: React.FC = () => {
   const { isManualOpen, setManualOpen } = useBrainStore();
   const [activeSection, setActiveSection] = useState<
-    'canvas' | 'graph' | 'editor' | 'shifts' | 'finance' | 'sync' | 'notebooklm' | 'hotkeys'
+    'canvas' | 'graph' | 'editor' | 'shifts' | 'finance' | 'sync' | 'notebooklm' | 'gestures'
   >('canvas');
 
   if (!isManualOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md animate-fade-in p-4 text-[#e2e8f0]">
-      <div className="w-full max-w-3xl bg-[#12131a] border border-white/[0.12] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md animate-fade-in p-2 sm:p-4 text-[#e2e8f0]">
+      <div className="w-full max-w-3xl bg-[#12131a] border border-white/[0.12] rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[92vh] sm:h-auto sm:max-h-[85vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.08] bg-[#161722]">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-[#7c5cff]/20 text-[#7c5cff] border border-[#7c5cff]/30">
-              <IconBookGuide size={20} color="#7c5cff" />
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-white/[0.08] bg-[#161722] shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="p-1.5 sm:p-2 rounded-xl bg-[#7c5cff]/20 text-[#7c5cff] border border-[#7c5cff]/30 shrink-0">
+              <IconBookGuide size={18} color="#7c5cff" />
             </div>
-            <div>
-              <h2 className="text-base font-bold text-white tracking-wide">
-                Руководство пользователя НейроноБлокнот
+            <div className="min-w-0">
+              <h2 className="text-sm sm:text-base font-bold text-white tracking-wide truncate">
+                Руководство пользователя
               </h2>
-              <p className="text-xs text-[#94a3b8]">
+              <p className="text-[11px] sm:text-xs text-[#94a3b8] hidden sm:block truncate">
                 Подробная инструкция по всем возможностям и модулям приложения
               </p>
             </div>
           </div>
           <button
             onClick={() => setManualOpen(false)}
-            className="p-1.5 text-[#94a3b8] hover:text-white hover:bg-white/[0.06] rounded-xl transition-all"
+            className="p-1.5 text-[#94a3b8] hover:text-white hover:bg-white/[0.06] rounded-xl transition-all shrink-0 ml-2"
           >
             <X size={18} />
           </button>
         </div>
 
         {/* Content Body */}
-        <div className="flex-1 flex overflow-hidden">
-          {/* Left Navigation Tabs */}
-          <div className="w-60 border-r border-white/[0.08] bg-[#0f1015] p-3 space-y-1.5 overflow-y-auto shrink-0">
+        <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
+          {/* Navigation Tabs (Horizontal on mobile, vertical sidebar on desktop) */}
+          <div className="flex md:flex-col overflow-x-auto md:overflow-y-auto border-b md:border-b-0 md:border-r border-white/[0.08] bg-[#0f1015] p-2 md:p-3 gap-1.5 shrink-0 md:w-60 no-scrollbar">
             <button
               onClick={() => setActiveSection('canvas')}
-              className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-all ${
+              className={`shrink-0 md:w-full text-left px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 whitespace-nowrap transition-all ${
                 activeSection === 'canvas'
                   ? 'bg-[#7c5cff] text-white shadow-lg'
                   : 'text-[#94a3b8] hover:bg-white/[0.04] hover:text-white'
               }`}
             >
-              <IconStickyNote size={16} color={activeSection === 'canvas' ? '#ffffff' : '#94a3b8'} />
+              <IconStickyNote size={15} color={activeSection === 'canvas' ? '#ffffff' : '#94a3b8'} />
               <span>Холст и MindMap</span>
             </button>
 
             <button
               onClick={() => setActiveSection('graph')}
-              className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-all ${
+              className={`shrink-0 md:w-full text-left px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 whitespace-nowrap transition-all ${
                 activeSection === 'graph'
                   ? 'bg-[#7c5cff] text-white shadow-lg'
                   : 'text-[#94a3b8] hover:bg-white/[0.04] hover:text-white'
               }`}
             >
-              <IconGraph2D size={16} color={activeSection === 'graph' ? '#ffffff' : '#94a3b8'} />
+              <IconGraph2D size={15} color={activeSection === 'graph' ? '#ffffff' : '#94a3b8'} />
               <span>Интерактивный Граф</span>
             </button>
 
             <button
               onClick={() => setActiveSection('editor')}
-              className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-all ${
+              className={`shrink-0 md:w-full text-left px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 whitespace-nowrap transition-all ${
                 activeSection === 'editor'
                   ? 'bg-[#7c5cff] text-white shadow-lg'
                   : 'text-[#94a3b8] hover:bg-white/[0.04] hover:text-white'
               }`}
             >
-              <IconExcelTable size={16} color={activeSection === 'editor' ? '#ffffff' : '#94a3b8'} />
+              <IconExcelTable size={15} color={activeSection === 'editor' ? '#ffffff' : '#94a3b8'} />
               <span>Редактор и Таблицы</span>
             </button>
 
             <button
               onClick={() => setActiveSection('shifts')}
-              className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-all ${
+              className={`shrink-0 md:w-full text-left px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 whitespace-nowrap transition-all ${
                 activeSection === 'shifts'
                   ? 'bg-[#7c5cff] text-white shadow-lg'
                   : 'text-[#94a3b8] hover:bg-white/[0.04] hover:text-white'
               }`}
             >
-              <IconDayShift size={16} color={activeSection === 'shifts' ? '#ffffff' : '#94a3b8'} />
+              <IconDayShift size={15} color={activeSection === 'shifts' ? '#ffffff' : '#94a3b8'} />
               <span>Смены и Календарь</span>
             </button>
 
             <button
               onClick={() => setActiveSection('finance')}
-              className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-all ${
+              className={`shrink-0 md:w-full text-left px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 whitespace-nowrap transition-all ${
                 activeSection === 'finance'
                   ? 'bg-[#7c5cff] text-white shadow-lg'
                   : 'text-[#94a3b8] hover:bg-white/[0.04] hover:text-white'
               }`}
             >
-              <IconTargetGoal size={16} color={activeSection === 'finance' ? '#ffffff' : '#94a3b8'} />
+              <IconTargetGoal size={15} color={activeSection === 'finance' ? '#ffffff' : '#94a3b8'} />
               <span>Финансы и Цели</span>
             </button>
 
             <button
               onClick={() => setActiveSection('sync')}
-              className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-all ${
+              className={`shrink-0 md:w-full text-left px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 whitespace-nowrap transition-all ${
                 activeSection === 'sync'
                   ? 'bg-[#7c5cff] text-white shadow-lg'
                   : 'text-[#94a3b8] hover:bg-white/[0.04] hover:text-white'
               }`}
             >
-              <Wifi size={16} />
+              <Wifi size={15} />
               <span>P2P Синхронизация</span>
             </button>
 
             <button
               onClick={() => setActiveSection('notebooklm')}
-              className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-all ${
+              className={`shrink-0 md:w-full text-left px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 whitespace-nowrap transition-all ${
                 activeSection === 'notebooklm'
                   ? 'bg-[#7c5cff] text-white shadow-lg'
                   : 'text-[#94a3b8] hover:bg-white/[0.04] hover:text-white'
               }`}
             >
-              <Sparkles size={16} className="text-[#ec4899]" />
+              <Sparkles size={15} className="text-[#ec4899]" />
               <span>Google NotebookLM</span>
             </button>
 
             <button
-              onClick={() => setActiveSection('hotkeys')}
-              className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-all ${
-                activeSection === 'hotkeys'
+              onClick={() => setActiveSection('gestures')}
+              className={`shrink-0 md:w-full text-left px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 whitespace-nowrap transition-all ${
+                activeSection === 'gestures'
                   ? 'bg-[#7c5cff] text-white shadow-lg'
                   : 'text-[#94a3b8] hover:bg-white/[0.04] hover:text-white'
               }`}
             >
-              <Keyboard size={16} />
-              <span>Горячие клавиши</span>
+              <Smartphone size={15} />
+              <span>Жесты и Сенсор</span>
             </button>
           </div>
 
           {/* Right Details Panel */}
-          <div className="flex-1 p-6 overflow-y-auto space-y-4 text-xs leading-relaxed">
+          <div className="flex-1 p-3.5 sm:p-6 overflow-y-auto space-y-4 text-xs leading-relaxed min-w-0">
             {/* 1. Canvas & MindMap */}
             {activeSection === 'canvas' && (
               <div className="space-y-4 animate-fade-in">
@@ -189,7 +189,7 @@ export const UserManualGuideModal: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="p-3.5 bg-[#171822] rounded-2xl border border-white/[0.08] space-y-1">
                     <span className="font-bold text-[#f59e0b] block">Навигация и зум:</span>
                     <p className="text-[#94a3b8] text-[11px]">
@@ -288,7 +288,7 @@ export const UserManualGuideModal: React.FC = () => {
                   <span>Умный Редактор, Формулы и Таблицы</span>
                 </h3>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="p-3.5 bg-[#171822] rounded-2xl border border-white/[0.08] space-y-1">
                     <span className="font-bold text-[#f59e0b] block">Калькулятор прямо в тексте:</span>
                     <p className="text-[#94a3b8] text-[11px]">
@@ -360,7 +360,7 @@ export const UserManualGuideModal: React.FC = () => {
                   <span>Финансовый Менеджер, Вклады и Цели</span>
                 </h3>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="p-4 bg-[#171822] rounded-2xl border border-white/[0.08] space-y-2">
                     <span className="font-bold text-[#10b981] block text-xs">Цели накоплений (Копилки):</span>
                     <p className="text-[#94a3b8] text-[11px]">
@@ -393,7 +393,7 @@ export const UserManualGuideModal: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   <div className="p-3 bg-[#171822] rounded-xl border border-white/[0.08] space-y-1">
                     <span className="font-bold text-[#7c5cff] block">1. Wi-Fi Сеть (LAN):</span>
                     <p className="text-[#94a3b8] text-[11px]">
@@ -445,43 +445,61 @@ export const UserManualGuideModal: React.FC = () => {
               </div>
             )}
 
-            {/* 8. Hotkeys */}
-            {activeSection === 'hotkeys' && (
+            {/* 8. Mobile Gestures & Touch Controls */}
+            {activeSection === 'gestures' && (
               <div className="space-y-3 animate-fade-in">
                 <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <Keyboard size={20} className="text-[#ec4899]" />
-                  <span>Полный справочник горячих клавиш (Hotkeys)</span>
+                  <Smartphone size={20} className="text-[#38bdf8]" />
+                  <span>Жесты и сенсорное управление на телефоне</span>
                 </h3>
 
-                <div className="grid grid-cols-2 gap-2 text-[11px]">
-                  <div className="p-2.5 bg-[#171822] rounded-xl border border-white/[0.08] flex items-center justify-between">
-                    <span className="text-[#cbd5e1]">Быстрый поиск (Spotlight)</span>
-                    <kbd className="px-2 py-0.5 bg-black/40 rounded border border-white/10 font-mono text-[10px] text-[#38bdf8] font-bold">Ctrl + K / P</kbd>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                  <div className="p-3 bg-[#171822] rounded-xl border border-white/[0.08] space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-white">Свайп от левого края</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#7c5cff]/20 text-[#7c5cff] font-bold">Жест</span>
+                    </div>
+                    <p className="text-[#94a3b8]">Быстрое открытие проводника заметок, папок и структуры базы знаний.</p>
                   </div>
 
-                  <div className="p-2.5 bg-[#171822] rounded-xl border border-white/[0.08] flex items-center justify-between">
-                    <span className="text-[#cbd5e1]">Новая заметка</span>
-                    <kbd className="px-2 py-0.5 bg-black/40 rounded border border-white/10 font-mono text-[10px] text-[#38bdf8] font-bold">Ctrl + N</kbd>
+                  <div className="p-3 bg-[#171822] rounded-xl border border-white/[0.08] space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-white">Щипок двумя пальцами</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#38bdf8]/20 text-[#38bdf8] font-bold">Pinch</span>
+                    </div>
+                    <p className="text-[#94a3b8]">Плавное приближение и отдаление созвездий в Графе и стикеров на Холсте.</p>
                   </div>
 
-                  <div className="p-2.5 bg-[#171822] rounded-xl border border-white/[0.08] flex items-center justify-between">
-                    <span className="text-[#cbd5e1]">Закрыть активную вкладку</span>
-                    <kbd className="px-2 py-0.5 bg-black/40 rounded border border-white/10 font-mono text-[10px] text-[#38bdf8] font-bold">Ctrl + W</kbd>
+                  <div className="p-3 bg-[#171822] rounded-xl border border-white/[0.08] space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-white">Перетаскивание пальцем</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#10b981]/20 text-[#10b981] font-bold">Drag</span>
+                    </div>
+                    <p className="text-[#94a3b8]">Зажмите узел графа или стикер на холсте для свободного перемещения по экрану.</p>
                   </div>
 
-                  <div className="p-2.5 bg-[#171822] rounded-xl border border-white/[0.08] flex items-center justify-between">
-                    <span className="text-[#cbd5e1]">Скрыть / показать боковую панель</span>
-                    <kbd className="px-2 py-0.5 bg-black/40 rounded border border-white/10 font-mono text-[10px] text-[#38bdf8] font-bold">Ctrl + B</kbd>
+                  <div className="p-3 bg-[#171822] rounded-xl border border-white/[0.08] space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-white">Кнопка «+» в верхнем баре</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#f59e0b]/20 text-[#f59e0b] font-bold">Быстро</span>
+                    </div>
+                    <p className="text-[#94a3b8]">Автоматически добавляет нужный элемент: стикер на холст, смену/дело в календарь, доход/расход в финансы.</p>
                   </div>
 
-                  <div className="p-2.5 bg-[#171822] rounded-xl border border-white/[0.08] flex items-center justify-between">
-                    <span className="text-[#cbd5e1]">Создать вики-ссылку</span>
-                    <kbd className="px-2 py-0.5 bg-black/40 rounded border border-white/10 font-mono text-[10px] text-[#7c5cff] font-bold">[[</kbd>
+                  <div className="p-3 bg-[#171822] rounded-xl border border-white/[0.08] space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-white">Связывание мыслей</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#ec4899]/20 text-[#ec4899] font-bold">Связи</span>
+                    </div>
+                    <p className="text-[#94a3b8]">Коснитесь узла на графе или стикера на холсте и нажмите «Связать», затем коснитесь второй мысли.</p>
                   </div>
 
-                  <div className="p-2.5 bg-[#171822] rounded-xl border border-white/[0.08] flex items-center justify-between">
-                    <span className="text-[#cbd5e1]">Полноэкранный режим</span>
-                    <kbd className="px-2 py-0.5 bg-black/40 rounded border border-white/10 font-mono text-[10px] text-[#7c5cff] font-bold">F11</kbd>
+                  <div className="p-3 bg-[#171822] rounded-xl border border-white/[0.08] space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-white">Контекстное меню</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-white font-bold">Тап</span>
+                    </div>
+                    <p className="text-[#94a3b8]">Коснитесь узла или карточки для быстрого доступа к закреплению, удалению или переходу в заметку.</p>
                   </div>
                 </div>
               </div>

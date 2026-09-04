@@ -78,9 +78,13 @@ export const MobileFinanceView: React.FC = () => {
           />
           <div className="flex items-center gap-2">
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
               value={newGoalTarget}
-              onChange={(e) => setNewGoalTarget(e.target.value)}
+              onChange={(e) => {
+                const clean = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+                setNewGoalTarget(clean);
+              }}
               placeholder="Сумма цели (₽)..."
               className="flex-1 py-1.5 px-2.5 rounded-xl bg-[#0c0d12] border border-[#232533] text-xs text-white placeholder:text-[#64748b] focus:outline-none focus:border-[#8052ff]"
             />

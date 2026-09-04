@@ -6,14 +6,28 @@
   color-scheme: dark;
 }
 
-body {
+html, body {
   margin: 0;
   padding: 0;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  max-width: 100vw;
+  overflow: hidden;
   background-color: #0c0d12;
   color: #dcddde;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
   touch-action: manipulation;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  max-width: 100vw;
+  overflow: hidden;
+  position: relative;
 }
 
 /* Custom scrollbars for mobile view */

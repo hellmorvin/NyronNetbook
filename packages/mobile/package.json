@@ -9,11 +9,15 @@
     "preview": "vite preview",
     "cap:sync": "npm run build && npx cap sync",
     "cap:open:android": "npx cap open android",
-    "cap:build:android": "npm run build && npx cap sync android && cd android && ./gradlew assembleDebug"
+    "cap:build:android": "npm run build && npx cap sync android && cd android && ./gradlew assembleDebug",
+    "cap:add:ios": "npx cap add ios",
+    "cap:open:ios": "npx cap open ios",
+    "cap:sync:ios": "npm run build && npx cap sync ios"
   },
   "dependencies": {
     "@axon/shared": "*",
     "@capacitor/android": "^7.0.1",
+    "@capacitor/ios": "^7.0.1",
     "@capacitor/core": "^7.0.1",
     "@react-three/drei": "^9.121.4",
     "@react-three/fiber": "^8.17.14",

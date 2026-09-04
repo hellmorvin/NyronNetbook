@@ -109,9 +109,14 @@ export const MobileShiftsView: React.FC = () => {
       <div className="flex items-center justify-between px-3 py-2 bg-[#14151e] rounded-2xl border border-[#232533] text-xs">
         <span className="text-[#94a3b8]">Ставка за час (₽):</span>
         <input
-          type="number"
-          value={hourlyRate}
-          onChange={(e) => setHourlyRate(Number(e.target.value) || 0)}
+          type="text"
+          inputMode="numeric"
+          value={hourlyRate === 0 ? '' : String(hourlyRate)}
+          onChange={(e) => {
+            const clean = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+            setHourlyRate(clean === '' ? 0 : Number(clean));
+          }}
+          placeholder="0"
           className="w-20 text-right bg-[#0c0d12] border border-[#232533] px-2 py-1 rounded-lg text-white font-bold focus:outline-none focus:border-[#8052ff]"
         />
       </div>

@@ -107,91 +107,9 @@ const createFullNeuron = (params: {
   };
 };
 
-const defaultWelcomeNotes: Neuron[] = [
-  createFullNeuron({
-    id: 'neu_welcome_mobile',
-    filePath: 'Инструкция/Добро пожаловать.md',
-    title: 'Добро пожаловать в НейроноБлокнот Mobile',
-    content: `# Добро пожаловать в НейроноБлокнот Mobile!
-
-Это ваша персональная мобильная база знаний и система планирования.
-
-## Возможности мобильного приложения:
-- **1 в 1 с ПК**: Полная синхронизация заметок, смен, финансов и графа.
-- **P2P Синхронизация**: Прямой обмен с компьютером по домашнему Wi-Fi или точке доступа без облака.
-- **Интерактивный Нейро-Граф**: Сенсорное масштабирование и навигация по связям [[Связи]].
--  **Умный Редактор**: Поддержка вики-ссылок, формул и списков задач.
-- ⏱️ **Календарь смен**: Удобный ввод рабочих смен и расчёт зарплаты.
-- **Финансовый трекер**: Цели, вклады и учёт бюджета.
-`,
-    tags: ['мобильное', 'старт', 'инструкция'],
-    pinned: true,
-    learningState: 'new',
-    wikiLinks: ['Связи'],
-    backlinks: [],
-  }),
-  createFullNeuron({
-    id: 'neu_links_demo',
-    filePath: 'Инструкция/Связи.md',
-    title: 'Связи',
-    content: `# Связи между мыслями
-
-Вы можете соединять заметки двусторонними ссылками. 
-Просто введите \`[[\` и выберите нужную заметку!
-
-Ссылка обратно: [[Добро пожаловать в НейроноБлокнот Mobile]].
-`,
-    tags: ['граф', 'синапсы'],
-    pinned: false,
-    learningState: 'mastered',
-    wikiLinks: ['Добро пожаловать в НейроноБлокнот Mobile'],
-    backlinks: ['neu_welcome_mobile'],
-  }),
-];
-
-const defaultStickies: CanvasSticky[] = [
-  {
-    id: 'sticky_1',
-    x: 80,
-    y: 120,
-    width: 200,
-    height: 150,
-    color: '#8052ff',
-    text: 'Новая идея:\nЗаписать мысли на ходу!',
-    updatedAt: Date.now(),
-  },
-  {
-    id: 'sticky_2',
-    x: 120,
-    y: 300,
-    width: 200,
-    height: 140,
-    color: '#10b981',
-    text: 'Синхронизировать с ПК вечером через Wi-Fi P2P',
-    updatedAt: Date.now(),
-  },
-];
-
-const defaultSavings: SavingsGoal[] = [
-  {
-    id: 'goal_phone',
-    title: 'Новый смартфон',
-    targetAmount: 85000,
-    currentAmount: 42000,
-    deadline: '2026-12-31',
-    color: '#38bdf8',
-    category: 'Техника',
-  },
-  {
-    id: 'goal_vacation',
-    title: 'Отпуск на море',
-    targetAmount: 120000,
-    currentAmount: 75000,
-    deadline: '2026-08-01',
-    color: '#10b981',
-    category: 'Путешествия',
-  },
-];
+const defaultWelcomeNotes: Neuron[] = [];
+const defaultStickies: CanvasSticky[] = [];
+const defaultSavings: SavingsGoal[] = [];
 
 export const useMobileBrainStore = create<MobileBrainState>()(
   persist(
@@ -204,7 +122,7 @@ export const useMobileBrainStore = create<MobileBrainState>()(
       setSearchOpen: (isSearchOpen) => set({ isSearchOpen }),
 
       neurons: defaultWelcomeNotes,
-      activeNeuronId: 'neu_welcome_mobile',
+      activeNeuronId: null,
       setActiveNeuronId: (activeNeuronId) => set({ activeNeuronId }),
 
       addNeuron: (title = 'Новая заметка', folder = 'Заметки') => {

@@ -159,6 +159,13 @@ export const ObsidianGraphView: React.FC = () => {
   const [isLinkingMode, setIsLinkingMode] = useState(false);
   const [linkingSourceNode, setLinkingSourceNode] = useState<SimNode | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [selectedMobileNode, setSelectedMobileNode] = useState<SimNode | null>(null);
+
+  const isLinkingModeRef = useRef(false);
+  isLinkingModeRef.current = isLinkingMode;
+  const linkingSourceNodeRef = useRef<SimNode | null>(null);
+  linkingSourceNodeRef.current = linkingSourceNode;
+  const connectNeuronsRef = useRef<((s: string, t: string) => void) | null>(null);
 
   // Search & Tag Filter
   const [graphSearchQuery, setGraphSearchQuery] = useState('');
@@ -178,15 +185,36 @@ export const ObsidianGraphView: React.FC = () => {
     k: 1.0,
   });
 
+  const hoveredNodeRef = useRef<SimNode | null>(null);
+
   // Drag tracking refs (Rock-solid mouse tracking with window listeners)
   const dragStartPos = useRef({ x: 0, y: 0 });
   const hasMovedSignificantly = useRef(false);
   const draggedNodeRef = useRef<SimNode | null>(null);
   const isPanningCanvasRef = useRef(false);
   const panStartRef = useRef({ x: 0, y: 0 });
-  const hoveredNodeRef = useRef<SimNode | null>(null);
-
   const simulationRef = useRef<any>(null);
+
+  // Touch & Pinch-to-zoom tracking ref
+  const touchStateRef = useRef<{
+    isPinching: boolean;
+    initialDistance: number;
+    initialScale: number;
+    initialMidpoint: { x: number; y: number };
+    initialTransform: { x: number; y: number; k: number };
+    touchStartTime: number;
+    startTouchPos: { x: number; y: number };
+    hitNode: SimNode | null;
+  }>({
+    isPinching: false,
+    initialDistance: 0,
+    initialScale: 1,
+    initialMidpoint: { x: 0, y: 0 },
+    initialTransform: { x: 0, y: 0, k: 1 },
+    touchStartTime: 0,
+    startTouchPos: { x: 0, y: 0 },
+    hitNode: null,
+  });
 
   const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
@@ -376,6 +404,7 @@ export const ObsidianGraphView: React.FC = () => {
     },
     [neurons, updateNeuron, showToast]
   );
+  connectNeuronsRef.current = connectNeurons;
 
   const disconnectNeurons = useCallback(
     (sourceId: string, targetId: string) => {
@@ -738,6 +767,197 @@ export const ObsidianGraphView: React.FC = () => {
     }
   };
 
+  // Mobile Touch Handlers with Native Non-Passive Event Listeners (Zero lag, no browser interference)
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    let isPinching = false;
+    let initialDist = 0;
+    let initialMidX = 0;
+    let initialMidY = 0;
+    let initialTr = { x: 0, y: 0, k: 1 };
+    let panStartX = 0;
+    let panStartY = 0;
+    let isPanning = false;
+    let activeTouchNode: SimNode | null = null;
+    let touchStartTime = 0;
+    let startTouchX = 0;
+    let startTouchY = 0;
+    let hasMoved = false;
+
+    const onTouchStart = (e: TouchEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (e.touches.length === 2) {
+        const t1 = e.touches[0]!;
+        const t2 = e.touches[1]!;
+        isPinching = true;
+        isPanning = false;
+        if (activeTouchNode) {
+          activeTouchNode.fx = null;
+          activeTouchNode.fy = null;
+          activeTouchNode = null;
+          simulationRef.current?.alphaTarget(0);
+        }
+
+        initialDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY) || 1;
+        initialMidX = (t1.clientX + t2.clientX) / 2;
+        initialMidY = (t1.clientY + t2.clientY) / 2;
+        initialTr = { ...transformRef.current };
+        hasMoved = true;
+        return;
+      }
+
+      if (e.touches.length === 1) {
+        const t = e.touches[0]!;
+        touchStartTime = Date.now();
+        startTouchX = t.clientX;
+        startTouchY = t.clientY;
+        hasMoved = false;
+        isPinching = false;
+
+        const rect = canvas.getBoundingClientRect();
+        const tr = transformRef.current;
+        const gx = (t.clientX - rect.left - tr.x) / tr.k;
+        const gy = (t.clientY - rect.top - tr.y) / tr.k;
+
+        const hit = findNodeAt(gx, gy, 26);
+        if (hit) {
+          activeTouchNode = hit;
+          hit.fx = hit.x;
+          hit.fy = hit.y;
+          simulationRef.current?.alphaTarget(0.3).restart();
+        } else {
+          isPanning = true;
+          panStartX = t.clientX - tr.x;
+          panStartY = t.clientY - tr.y;
+        }
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (e.touches.length === 2 && isPinching) {
+        const t1 = e.touches[0]!;
+        const t2 = e.touches[1]!;
+        const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        const midX = (t1.clientX + t2.clientX) / 2;
+        const midY = (t1.clientY + t2.clientY) / 2;
+
+        const rect = canvas.getBoundingClientRect();
+        const ratio = dist / initialDist;
+        const newK = Math.max(0.12, Math.min(5.0, initialTr.k * ratio));
+
+        const pivotX = initialMidX - rect.left;
+        const pivotY = initialMidY - rect.top;
+        const dx = midX - initialMidX;
+        const dy = midY - initialMidY;
+
+        transformRef.current.k = newK;
+        transformRef.current.x = pivotX - (pivotX - initialTr.x) * (newK / initialTr.k) + dx;
+        transformRef.current.y = pivotY - (pivotY - initialTr.y) * (newK / initialTr.k) + dy;
+        hasMoved = true;
+        return;
+      }
+
+      if (e.touches.length === 1 && !isPinching) {
+        const t = e.touches[0]!;
+        const dx = t.clientX - startTouchX;
+        const dy = t.clientY - startTouchY;
+        if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+          hasMoved = true;
+        }
+
+        if (activeTouchNode) {
+          const rect = canvas.getBoundingClientRect();
+          const tr = transformRef.current;
+          activeTouchNode.fx = (t.clientX - rect.left - tr.x) / tr.k;
+          activeTouchNode.fy = (t.clientY - rect.top - tr.y) / tr.k;
+          return;
+        }
+
+        if (isPanning) {
+          transformRef.current.x = t.clientX - panStartX;
+          transformRef.current.y = t.clientY - panStartY;
+        }
+      }
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (isPinching && e.touches.length < 2) {
+        isPinching = false;
+        return;
+      }
+
+      if (activeTouchNode) {
+        activeTouchNode.fx = null;
+        activeTouchNode.fy = null;
+        activeTouchNode = null;
+        simulationRef.current?.alphaTarget(0);
+      }
+      isPanning = false;
+
+      const elapsed = Date.now() - touchStartTime;
+      if (!hasMoved && elapsed < 350) {
+        const rect = canvas.getBoundingClientRect();
+        const tr = transformRef.current;
+        const gx = (startTouchX - rect.left - tr.x) / tr.k;
+        const gy = (startTouchY - rect.top - tr.y) / tr.k;
+        const hit = findNodeAt(gx, gy, 26);
+
+        // 1. Linking Mode active (toolbar or node action sheet)
+        if (isLinkingModeRef.current) {
+          const source = linkingSourceNodeRef.current;
+          if (!source) {
+            if (hit) {
+              setLinkingSourceNode(hit);
+              showToast(`Выбрана «${hit.title}». Теперь коснитесь целевой мысли...`);
+            }
+          } else {
+            if (hit && hit.id !== source.id) {
+              connectNeuronsRef.current?.(source.id, hit.id);
+              setIsLinkingMode(false);
+              setLinkingSourceNode(null);
+              setSelectedMobileNode(null);
+            } else if (!hit) {
+              setIsLinkingMode(false);
+              setLinkingSourceNode(null);
+              showToast('Режим связи отменен');
+            } else {
+              showToast('Нельзя связать мысль саму с собой');
+            }
+          }
+          return;
+        }
+
+        // 2. Normal Tap: select node and open sleek mobile action card
+        if (hit) {
+          selectNeuron(hit.id);
+          setSelectedMobileNode(hit);
+        } else {
+          selectNeuron(null);
+          setSelectedMobileNode(null);
+        }
+      }
+    };
+
+    canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+    canvas.addEventListener('touchend', onTouchEnd, { passive: false });
+    canvas.addEventListener('touchcancel', onTouchEnd, { passive: false });
+
+    return () => {
+      canvas.removeEventListener('touchstart', onTouchStart);
+      canvas.removeEventListener('touchmove', onTouchMove);
+      canvas.removeEventListener('touchend', onTouchEnd);
+      canvas.removeEventListener('touchcancel', onTouchEnd);
+    };
+  }, [findNodeAt, openNote, selectNeuron]);
+
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (hasMovedSignificantly.current || isLinkingMode) return;
 
@@ -870,6 +1090,7 @@ export const ObsidianGraphView: React.FC = () => {
         onDoubleClick={handleDoubleClick}
         onContextMenu={handleContextMenu}
         onWheel={handleWheel}
+        style={{ touchAction: 'none' }}
         className="w-full h-full block cursor-grab active:cursor-grabbing"
       />
 
@@ -1429,6 +1650,113 @@ export const ObsidianGraphView: React.FC = () => {
             >
               <Trash2 size={13} />
               <span>Удалить мысль</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ Mobile Linking Mode Indicator Banner ══════════════════ */}
+      {isLinkingMode && (
+        <div
+          className="absolute top-3 left-3 right-16 z-30 px-3.5 py-2.5 rounded-2xl border shadow-xl flex items-center justify-between gap-2 animate-slide-down"
+          style={{
+            background: isLight ? 'rgba(255,255,255,0.96)' : 'rgba(20,20,30,0.96)',
+            borderColor: currentAccent,
+            boxShadow: `0 8px 24px ${currentAccent}35`,
+          }}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <Link2 size={16} className="animate-pulse shrink-0" style={{ color: currentAccent }} />
+            <div className="min-w-0 text-xs">
+              <span className="font-bold text-white block truncate">
+                {linkingSourceNode
+                  ? `Связать «${linkingSourceNode.title}» ➔ ...`
+                  : 'Выберите первую мысль'}
+              </span>
+              <span className="text-[10px] text-[#94a3b8] truncate block">
+                {linkingSourceNode ? 'Коснитесь целевой мысли' : 'Коснитесь любой точки графа'}
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              setIsLinkingMode(false);
+              setLinkingSourceNode(null);
+            }}
+            className="px-2 py-1 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] text-[#cbd5e1] text-xs font-semibold shrink-0"
+          >
+            Отмена
+          </button>
+        </div>
+      )}
+
+      {/* ═══ Mobile Node Action Bottom Card ═══════════════════════ */}
+      {selectedMobileNode && !isLinkingMode && (
+        <div
+          className="absolute bottom-4 left-3 right-3 z-30 p-3 rounded-2xl border shadow-2xl flex items-center justify-between gap-2 animate-slide-up select-none"
+          style={{
+            background: isLight ? 'rgba(255,255,255,0.96)' : 'rgba(20,22,32,0.96)',
+            borderColor: isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.12)',
+            backdropFilter: 'blur(20px)',
+            boxShadow: `0 12px 36px rgba(0,0,0,0.5), 0 0 16px ${currentAccent}25`,
+          }}
+        >
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <span
+              className="w-3.5 h-3.5 rounded-full shrink-0 ring-2 ring-white/20"
+              style={{ backgroundColor: selectedMobileNode.color || currentAccent }}
+            />
+            <div className="min-w-0">
+              <h4 className="text-xs font-bold text-white truncate">{selectedMobileNode.title}</h4>
+              <span className="text-[10px] text-[#94a3b8] block truncate">
+                {selectedMobileNode.linkCount} св. • {selectedMobileNode.folder}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* Open note */}
+            <button
+              onClick={() => {
+                openNote(selectedMobileNode.id);
+                setSelectedMobileNode(null);
+              }}
+              className="px-3 py-1.5 rounded-xl text-white text-xs font-bold flex items-center gap-1 shadow-md active:scale-95 transition-all"
+              style={{ backgroundColor: currentAccent }}
+            >
+              <FileText size={13} />
+              <span>Открыть</span>
+            </button>
+
+            {/* Link button */}
+            <button
+              onClick={() => {
+                setLinkingSourceNode(selectedMobileNode);
+                setIsLinkingMode(true);
+                showToast(`Выбрана «${selectedMobileNode.title}». Коснитесь целевой мысли...`);
+                setSelectedMobileNode(null);
+              }}
+              className="px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 active:scale-95 transition-all"
+              style={{
+                backgroundColor: `${currentAccent}20`,
+                color: currentAccent,
+                border: `1px solid ${currentAccent}50`,
+              }}
+              title="Создать связь с другой мыслью"
+            >
+              <Link2 size={13} />
+              <span>Связать</span>
+            </button>
+
+            {/* Close */}
+            <button
+              onClick={() => {
+                setSelectedMobileNode(null);
+                selectNeuron(null);
+              }}
+              className="p-1.5 rounded-xl text-[#94a3b8] hover:text-white hover:bg-white/[0.08] active:scale-95"
+            >
+              <X size={16} />
             </button>
           </div>
         </div>

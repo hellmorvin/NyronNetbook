@@ -234,6 +234,18 @@ export const CalendarShiftView: React.FC = () => {
     return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
   }, []);
 
+  const [isMobileAddModalOpen, setIsMobileAddModalOpen] = useState(false);
+  const [mobileAddTab, setMobileAddTab] = useState<'event' | 'shift' | 'generator'>('event');
+
+  // Listen for top bar + click on mobile
+  useEffect(() => {
+    const handleMobileAdd = () => {
+      setIsMobileAddModalOpen(true);
+    };
+    window.addEventListener('mobile-calendar-add-event', handleMobileAdd);
+    return () => window.removeEventListener('mobile-calendar-add-event', handleMobileAdd);
+  }, []);
+
   // Context Menu State for Right-Click on Day Cells
   const [cellContextMenu, setCellContextMenu] = useState<{
     x: number;
@@ -930,8 +942,26 @@ export const CalendarShiftView: React.FC = () => {
 
         {/* Hideable Premium Telemetry KPI Cards */}
         {isTelemetryVisible && (
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-2.5 animate-fade-in pt-1">
-            <div className="p-2.5 rounded-2xl bg-[#14151c]/90 border border-white/[0.08] flex items-center justify-between shadow-lg">
+          <>
+            {/* Mobile 1-Line Compact Summary */}
+            <div className="flex md:hidden items-center justify-between px-3 py-2 bg-[#14151c] border border-white/[0.08] rounded-2xl text-xs shadow-sm">
+              <div className="flex items-center gap-2 font-bold">
+                <span className="text-[#10b981] font-mono">
+                  +{monthStats.netEarnings >= 100000 ? Math.round(monthStats.netEarnings / 1000) + 'к' : monthStats.netEarnings.toLocaleString('ru-RU')} ₽
+                </span>
+                <span className="text-[#475569]">·</span>
+                <span className="text-[#38bdf8] font-mono font-semibold">{monthStats.totalHours}ч</span>
+                <span className="text-[#475569]">·</span>
+                <span className="text-[#f59e0b] font-semibold">{monthStats.workShiftsCount} см.</span>
+              </div>
+              <span className="text-[11px] text-[#94a3b8]">
+                {monthStats.daysOffCount} вых.
+              </span>
+            </div>
+
+            {/* Desktop Detailed 5 KPI Cards */}
+            <div className="hidden md:grid md:grid-cols-3 xl:grid-cols-5 gap-2 animate-fade-in pt-1 pb-1">
+            <div className="min-w-[170px] md:min-w-0 shrink-0 p-2.5 rounded-2xl bg-[#14151c]/90 border border-white/[0.08] flex items-center justify-between shadow-lg">
               <div>
                 <span className="text-[9px] uppercase font-bold text-[#94a3b8] tracking-wider block mb-0.5">
                   Чистый доход (На руках)
@@ -945,12 +975,12 @@ export const CalendarShiftView: React.FC = () => {
                   </span>
                 )}
               </div>
-              <div className="w-8 h-8 rounded-xl bg-[#10b981]/15 text-[#10b981] border border-[#10b981]/30 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-xl bg-[#10b981]/15 text-[#10b981] border border-[#10b981]/30 flex items-center justify-center shrink-0">
                 <DollarSign size={16} />
               </div>
             </div>
 
-            <div className="p-2.5 rounded-2xl bg-[#14151c]/90 border border-white/[0.08] flex items-center justify-between shadow-lg">
+            <div className="min-w-[170px] md:min-w-0 shrink-0 p-2.5 rounded-2xl bg-[#14151c]/90 border border-white/[0.08] flex items-center justify-between shadow-lg">
               <div>
                 <span className="text-[9px] uppercase font-bold text-[#94a3b8] tracking-wider block mb-0.5">
                   Отработано смен
@@ -959,12 +989,12 @@ export const CalendarShiftView: React.FC = () => {
                   {monthStats.workShiftsCount} <span className="text-xs text-[#94a3b8] font-normal">смен</span>
                 </span>
               </div>
-              <div className="w-8 h-8 rounded-xl bg-[#8b5cf6]/15 text-[#8b5cf6] border border-[#8b5cf6]/30 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-xl bg-[#8b5cf6]/15 text-[#8b5cf6] border border-[#8b5cf6]/30 flex items-center justify-center shrink-0">
                 <Briefcase size={16} />
               </div>
             </div>
 
-            <div className="p-2.5 rounded-2xl bg-[#14151c]/90 border border-white/[0.08] flex items-center justify-between shadow-lg">
+            <div className="min-w-[170px] md:min-w-0 shrink-0 p-2.5 rounded-2xl bg-[#14151c]/90 border border-white/[0.08] flex items-center justify-between shadow-lg">
               <div>
                 <span className="text-[9px] uppercase font-bold text-[#94a3b8] tracking-wider block mb-0.5">
                   Всего часов
@@ -973,12 +1003,12 @@ export const CalendarShiftView: React.FC = () => {
                   {monthStats.totalHours} <span className="text-xs text-[#94a3b8] font-normal">ч</span>
                 </span>
               </div>
-              <div className="w-8 h-8 rounded-xl bg-[#38bdf8]/15 text-[#38bdf8] border border-[#38bdf8]/30 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-xl bg-[#38bdf8]/15 text-[#38bdf8] border border-[#38bdf8]/30 flex items-center justify-center shrink-0">
                 <Clock size={16} />
               </div>
             </div>
 
-            <div className="p-2.5 rounded-2xl bg-[#14151c]/90 border border-white/[0.08] flex items-center justify-between shadow-lg">
+            <div className="min-w-[170px] md:min-w-0 shrink-0 p-2.5 rounded-2xl bg-[#14151c]/90 border border-white/[0.08] flex items-center justify-between shadow-lg">
               <div>
                 <span className="text-[9px] uppercase font-bold text-[#94a3b8] tracking-wider block mb-0.5">
                   Средний чистый / смена
@@ -987,12 +1017,12 @@ export const CalendarShiftView: React.FC = () => {
                   {monthStats.avgNetPerShift.toLocaleString('ru-RU')} ₽
                 </span>
               </div>
-              <div className="w-8 h-8 rounded-xl bg-[#f59e0b]/15 text-[#f59e0b] border border-[#f59e0b]/30 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-xl bg-[#f59e0b]/15 text-[#f59e0b] border border-[#f59e0b]/30 flex items-center justify-center shrink-0">
                 <TrendingUp size={16} />
               </div>
             </div>
 
-            <div className="p-2.5 rounded-2xl bg-[#14151c]/90 border border-white/[0.08] flex items-center justify-between shadow-lg">
+            <div className="min-w-[170px] md:min-w-0 shrink-0 p-2.5 rounded-2xl bg-[#14151c]/90 border border-white/[0.08] flex items-center justify-between shadow-lg">
               <div>
                 <span className="text-[9px] uppercase font-bold text-[#94a3b8] tracking-wider block mb-0.5">
                   Выходные / Баланс
@@ -1001,20 +1031,21 @@ export const CalendarShiftView: React.FC = () => {
                   {monthStats.daysOffCount} <span className="text-xs text-[#64748b] font-normal">вых.</span>
                 </span>
               </div>
-              <div className="w-8 h-8 rounded-xl bg-slate-500/15 text-[#cbd5e1] border border-slate-500/30 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-xl bg-slate-500/15 text-[#cbd5e1] border border-slate-500/30 flex items-center justify-center shrink-0">
                 <Coffee size={16} />
               </div>
             </div>
           </div>
+          </>
         )}
       </div>
 
       {/* Main Calendar View Area */}
-      <div className="flex-1 flex flex-col md:flex-row overflow-y-auto min-h-0 pb-32 md:pb-6">
+      <div className="flex-1 flex flex-col md:flex-row overflow-y-auto min-h-0 pb-20 md:pb-6">
         {/* Calendar Grid Container */}
         <div className="w-full md:flex-1 flex flex-col p-2 sm:p-3 shrink-0">
           {/* Quick Shift Paint Brush & Eraser Bar (Single Row, Sleek & Compact) */}
-          <div className="flex items-center gap-1 p-1 mb-2 bg-[#14151c] border border-white/[0.08] rounded-xl text-xs overflow-x-auto no-scrollbar shadow-sm shrink-0">
+          <div className="hidden md:flex items-center gap-1 p-1 mb-2 bg-[#14151c] border border-white/[0.08] rounded-xl text-xs overflow-x-auto no-scrollbar shadow-sm shrink-0">
             <span className="text-[10px] text-[#94a3b8] font-bold px-1 uppercase tracking-wider shrink-0">
                Кисть:
             </span>
@@ -1145,22 +1176,22 @@ export const CalendarShiftView: React.FC = () => {
                     }
                   }}
                   onContextMenu={(e) => handleCellContextMenu(e, dateStr)}
-                  className={`min-h-[64px] sm:min-h-[74px] 2xl:min-h-[86px] p-1 sm:p-2 rounded-xl sm:rounded-2xl border flex flex-col justify-between transition-all cursor-pointer relative group select-none ${
+                  className={`min-h-[56px] sm:min-h-[72px] 2xl:min-h-[82px] p-1 sm:p-1.5 rounded-xl sm:rounded-2xl border flex flex-col justify-between transition-all cursor-pointer relative group select-none overflow-hidden ${
                     isSelected
-                      ? 'border-[#8b5cf6] bg-[#8b5cf6]/15 shadow-xl shadow-purple-500/20 ring-2 ring-[#8b5cf6]/70'
+                      ? 'border-[#8b5cf6] bg-[#8b5cf6]/20 shadow-lg shadow-purple-500/25 ring-2 ring-[#8b5cf6]'
                       : isToday
-                      ? 'border-[#f59e0b] bg-[#14151c] shadow-md ring-1 ring-[#f59e0b]/40'
+                      ? 'border-[#f59e0b] bg-[#14151c] shadow-md ring-1 ring-[#f59e0b]/50'
                       : isCurrentMonth
-                      ? 'border-white/[0.08] bg-[#14151c] hover:border-white/[0.20] hover:bg-[#181924]'
-                      : 'border-transparent bg-white/[0.01] opacity-25'
+                      ? 'border-white/[0.08] bg-[#14151c] hover:border-white/[0.22] hover:bg-[#181924]'
+                      : 'border-transparent bg-white/[0.01] opacity-20'
                   }`}
                 >
-                  {/* Top Bar: Date + Shift Pill */}
-                  <div className="flex items-center justify-between">
+                  {/* Top Bar: Date + Compact Shift Pill */}
+                  <div className="flex items-center justify-between gap-0.5">
                     <span
-                      className={`text-[11px] sm:text-xs font-bold w-5 h-5 sm:w-6 sm:h-6 rounded-md sm:rounded-lg flex items-center justify-center ${
+                      className={`text-[11px] sm:text-xs font-bold w-5 h-5 sm:w-6 sm:h-6 rounded-md sm:rounded-lg flex items-center justify-center shrink-0 ${
                         isToday
-                          ? 'bg-[#f59e0b] text-black font-extrabold shadow-md'
+                          ? 'bg-[#f59e0b] text-black font-extrabold shadow-sm'
                           : isSelected
                           ? 'bg-[#8b5cf6] text-white font-extrabold shadow-sm'
                           : dayOfWeek === 0 || dayOfWeek === 6
@@ -1173,41 +1204,36 @@ export const CalendarShiftView: React.FC = () => {
 
                     {config && shift && (
                       <span
-                        className="px-1 sm:px-2 py-0.5 rounded-lg text-[10px] font-black border flex items-center gap-1 shadow-sm shrink-0"
+                        className="px-1 py-0.5 rounded-md text-[9px] font-black border flex items-center gap-0.5 shadow-sm shrink-0 leading-none"
                         style={{
                           backgroundColor: config.bg,
                           color: config.color,
                           borderColor: config.border,
                         }}
                       >
-                        <config.icon size={11} color={config.color} />
-                        <span className="hidden sm:inline">{config.label}</span>
-                        <span className="sm:hidden font-black">{config.shortLabel}</span>
+                        <config.icon size={10} color={config.color} />
+                        <span className="hidden sm:inline font-bold text-[10px]">{config.label}</span>
+                        <span className="sm:hidden font-black text-[9px]">{config.shortLabel}</span>
                       </span>
                     )}
                   </div>
 
-                  {/* Middle Section: Shift Hours & Clean Event Indicators */}
-                  <div className="my-0.5 space-y-0.5">
+                  {/* Middle / Bottom Content: Compact & Non-Overflowing */}
+                  <div className="flex flex-col gap-0.5 mt-auto pt-0.5 overflow-hidden">
                     {shift && shift.type !== 'off' && shift.type !== 'vacation' && (
-                      <div className="text-[10px] text-[#94a3b8] font-mono flex items-center gap-1 flex-wrap">
-                        <span className="flex items-center gap-0.5 text-[#38bdf8] font-semibold">
-                          <Clock size={10} />
-                          <span>{shift.hours}ч</span>
+                      <div className="flex items-center justify-between text-[9px] font-mono font-semibold leading-none gap-0.5 overflow-hidden">
+                        <span className="text-[#38bdf8] truncate shrink-0">
+                          {shift.hours}ч
                         </span>
-                        {shift.bonus > 0 && (
-                          <span className="text-[#ec4899] font-bold text-[9px]">+{shift.bonus}₽</span>
-                        )}
-                        {dayExpense > 0 && (
-                          <span className="text-[#f43f5e] font-bold text-[9px]">
-                            -{dayExpense}₽
-                          </span>
-                        )}
+                        <span className="text-[#10b981] font-bold truncate">
+                          +{shift.earnings >= 10000 ? Math.round(shift.earnings / 1000) + 'к' : shift.earnings}
+                        </span>
                       </div>
                     )}
 
+                    {/* Clean Event Dots */}
                     {dayEvts.length > 0 && (
-                      <div className="flex items-center gap-1 py-0.5 flex-wrap">
+                      <div className="flex items-center gap-1 py-0.5 overflow-hidden">
                         {dayEvts.slice(0, 3).map((ev) => (
                           <span
                             key={ev.id}
@@ -1224,27 +1250,14 @@ export const CalendarShiftView: React.FC = () => {
                       </div>
                     )}
                   </div>
-
-                  {/* Bottom Bar: Clean Financial Earnings Pill (No truncated text) */}
-                  <div className="flex items-center justify-between pt-0.5">
-                    {shift && shift.type !== 'off' && shift.type !== 'vacation' ? (
-                      <div className="flex items-center">
-                        <span className="px-1 py-0.5 rounded-md bg-[#10b981]/15 border border-[#10b981]/30 text-[9px] sm:text-[10px] font-extrabold text-[#10b981] font-mono shadow-sm leading-none whitespace-nowrap">
-                          +{shift.earnings >= 10000 ? Math.round(shift.earnings / 1000) + 'k' : shift.earnings} ₽
-                        </span>
-                      </div>
-                    ) : (
-                      <span />
-                    )}
-                  </div>
                 </div>
               );
             })}
           </div>
         </div>
 
-        {/* Right Inspector Drawer: Selected Day (Firmly Fixed & Always Held) */}
-        <div className="w-full md:w-80 2xl:w-84 shrink-0 border-t md:border-t-0 md:border-l border-white/[0.08] bg-[#111217] p-4 flex flex-col justify-between">
+        {/* Right Inspector Drawer: Selected Day (Desktop only; mobile uses top + modal) */}
+        <div className="hidden md:flex md:w-80 2xl:w-84 shrink-0 border-l border-white/[0.08] bg-[#111217] p-4 flex-col justify-between">
           <div className="space-y-3.5">
             <div className="flex items-center justify-between pb-2 border-b border-white/[0.08]">
               <div>
@@ -1453,9 +1466,14 @@ export const CalendarShiftView: React.FC = () => {
                             {formRateType === 'hourly' ? 'Ставка в час (₽/ч)' : 'Ставка за смену (₽)'}
                           </label>
                           <input
-                            type="number"
-                            value={formRate}
-                            onChange={(e) => setFormRate(Number(e.target.value))}
+                            type="text"
+                            inputMode="numeric"
+                            value={formRate === 0 ? '' : String(formRate)}
+                            onChange={(e) => {
+                              const clean = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+                              setFormRate(clean === '' ? 0 : Number(clean));
+                            }}
+                            placeholder="0"
                             className="w-full bg-[#111218] border border-white/[0.08] rounded-xl p-2 text-white font-mono text-xs focus:outline-none focus:border-[#8b5cf6]"
                           />
                         </div>
@@ -1464,9 +1482,13 @@ export const CalendarShiftView: React.FC = () => {
                             Премия / бонус (₽)
                           </label>
                           <input
-                            type="number"
-                            value={formBonus}
-                            onChange={(e) => setFormBonus(Number(e.target.value))}
+                            type="text"
+                            inputMode="numeric"
+                            value={formBonus === 0 ? '' : String(formBonus)}
+                            onChange={(e) => {
+                              const clean = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+                              setFormBonus(clean === '' ? 0 : Number(clean));
+                            }}
                             placeholder="0"
                             className="w-full bg-[#111218] border border-white/[0.08] rounded-xl p-2 text-white font-mono text-xs focus:outline-none focus:border-[#8b5cf6]"
                           />
@@ -1486,9 +1508,13 @@ export const CalendarShiftView: React.FC = () => {
 
                       <div className="relative">
                         <input
-                          type="number"
-                          value={formExpense || ''}
-                          onChange={(e) => setFormExpense(Number(e.target.value) || 0)}
+                          type="text"
+                          inputMode="numeric"
+                          value={formExpense === 0 ? '' : String(formExpense)}
+                          onChange={(e) => {
+                            const clean = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+                            setFormExpense(clean === '' ? 0 : Number(clean));
+                          }}
                           placeholder="0"
                           className="w-full bg-[#111218] border border-white/[0.08] rounded-xl pl-3 pr-8 py-2 text-white font-mono text-xs focus:outline-none focus:border-[#8b5cf6]"
                         />
@@ -1695,10 +1721,14 @@ export const CalendarShiftView: React.FC = () => {
                   <div>
                     <label className="block text-[10px] text-[#94a3b8]">Сумма расхода (₽, если есть):</label>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
                       value={eventAmount}
-                      onChange={(e) => setEventAmount(e.target.value)}
-                      placeholder="1500"
+                      onChange={(e) => {
+                        const clean = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+                        setEventAmount(clean);
+                      }}
+                      placeholder="0"
                       className="w-full bg-[#111217] border border-white/[0.08] rounded-xl p-2 text-white font-mono text-xs focus:outline-none focus:border-[#8b5cf6]"
                     />
                   </div>
@@ -2247,9 +2277,14 @@ export const CalendarShiftView: React.FC = () => {
                     {genRateType === 'hourly' ? 'Ставка в час (₽/ч):' : 'Ставка за смену (₽):'}
                   </label>
                   <input
-                    type="number"
-                    value={genRate}
-                    onChange={(e) => setGenRate(Number(e.target.value) || 0)}
+                    type="text"
+                    inputMode="numeric"
+                    value={genRate === 0 ? '' : String(genRate)}
+                    onChange={(e) => {
+                      const clean = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+                      setGenRate(clean === '' ? 0 : Number(clean));
+                    }}
+                    placeholder="0"
                     className="w-full bg-[#111218] border border-white/[0.08] rounded-xl p-2 text-white font-mono font-bold focus:outline-none focus:border-[#8b5cf6]"
                   />
                 </div>
@@ -2257,9 +2292,14 @@ export const CalendarShiftView: React.FC = () => {
                 <div>
                   <label className="block text-[10px] text-[#94a3b8] mb-1 font-semibold">Часов в смене:</label>
                   <input
-                    type="number"
-                    value={genDayHours}
-                    onChange={(e) => setGenDayHours(Number(e.target.value) || 12)}
+                    type="text"
+                    inputMode="numeric"
+                    value={genDayHours === 0 ? '' : String(genDayHours)}
+                    onChange={(e) => {
+                      const clean = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+                      setGenDayHours(clean === '' ? 0 : Number(clean));
+                    }}
+                    placeholder="12"
                     className="w-full bg-[#111218] border border-white/[0.08] rounded-xl p-2 text-white font-mono focus:outline-none focus:border-[#8b5cf6]"
                   />
                 </div>
@@ -2361,9 +2401,14 @@ export const CalendarShiftView: React.FC = () => {
               <div>
                 <label className="block text-[#94a3b8] mb-1 font-medium">Ставка в час (₽/ч)</label>
                 <input
-                  type="number"
-                  value={shiftSettings.defaultHourlyRate}
-                  onChange={(e) => updateShiftSettings({ defaultHourlyRate: Number(e.target.value) })}
+                  type="text"
+                  inputMode="numeric"
+                  value={shiftSettings.defaultHourlyRate === 0 ? '' : String(shiftSettings.defaultHourlyRate)}
+                  onChange={(e) => {
+                    const clean = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+                    updateShiftSettings({ defaultHourlyRate: clean === '' ? 0 : Number(clean) });
+                  }}
+                  placeholder="0"
                   className="w-full bg-[#161720] border border-white/[0.08] rounded-xl p-2 text-white font-mono focus:outline-none focus:border-[#8b5cf6]"
                 />
               </div>
@@ -2371,9 +2416,14 @@ export const CalendarShiftView: React.FC = () => {
               <div>
                 <label className="block text-[#94a3b8] mb-1 font-medium">Ставка за смену (₽)</label>
                 <input
-                  type="number"
-                  value={shiftSettings.defaultFixedRate}
-                  onChange={(e) => updateShiftSettings({ defaultFixedRate: Number(e.target.value) })}
+                  type="text"
+                  inputMode="numeric"
+                  value={shiftSettings.defaultFixedRate === 0 ? '' : String(shiftSettings.defaultFixedRate)}
+                  onChange={(e) => {
+                    const clean = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+                    updateShiftSettings({ defaultFixedRate: clean === '' ? 0 : Number(clean) });
+                  }}
+                  placeholder="0"
                   className="w-full bg-[#161720] border border-white/[0.08] rounded-xl p-2 text-white font-mono focus:outline-none focus:border-[#8b5cf6]"
                 />
               </div>
@@ -2388,6 +2438,626 @@ export const CalendarShiftView: React.FC = () => {
             >
               Сохранить настройки
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Mobile Quick Add for Calendar */}
+      {isMobileAddModalOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setIsMobileAddModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-md bg-[#14151c] rounded-3xl border border-white/[0.14] p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-[#10b981]/20 text-[#10b981] flex items-center justify-center border border-[#10b981]/30">
+                  <Calendar size={18} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Добавить в календарь</h3>
+                  <p className="text-[10px] text-[#94a3b8]">Дата: {selectedDateStr}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsMobileAddModalOpen(false)}
+                className="text-[#94a3b8] hover:text-white p-1"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Mode Switcher Tabs */}
+            <div className="flex bg-[#101117] p-1 rounded-2xl border border-white/[0.08]">
+              <button
+                type="button"
+                onClick={() => setMobileAddTab('event')}
+                className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all ${
+                  mobileAddTab === 'event'
+                    ? 'bg-[#10b981] text-black shadow-md'
+                    : 'text-[#94a3b8] hover:text-white'
+                }`}
+              >
+                📌 Дело
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobileAddTab('shift')}
+                className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all ${
+                  mobileAddTab === 'shift'
+                    ? 'bg-[#10b981] text-black shadow-md'
+                    : 'text-[#94a3b8] hover:text-white'
+                }`}
+              >
+                💼 Смена
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobileAddTab('generator')}
+                className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all ${
+                  mobileAddTab === 'generator'
+                    ? 'bg-[#10b981] text-black shadow-md'
+                    : 'text-[#94a3b8] hover:text-white'
+                }`}
+              >
+                ⚡ Цикл
+              </button>
+            </div>
+
+            {/* Tab 1: Event Form */}
+            {mobileAddTab === 'event' && (
+              <form
+                onSubmit={(e) => {
+                  handleAddEvent(e);
+                  setIsMobileAddModalOpen(false);
+                }}
+                className="space-y-3 pt-1"
+              >
+                <div>
+                  <label className="text-[10px] font-bold text-[#94a3b8] uppercase block mb-1">
+                    Название дела / события:
+                  </label>
+                  <input
+                    type="text"
+                    value={eventTitle}
+                    onChange={(e) => setEventTitle(e.target.value)}
+                    placeholder="Например: Встреча, Врач, Тренировка..."
+                    className="w-full bg-[#161720] border border-white/[0.08] rounded-xl p-2.5 text-white text-xs focus:outline-none focus:border-[#10b981]"
+                    autoFocus
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] font-bold text-[#94a3b8] uppercase block mb-1">
+                      Время:
+                    </label>
+                    <input
+                      type="time"
+                      value={eventTime}
+                      onChange={(e) => setEventTime(e.target.value)}
+                      className="w-full bg-[#161720] border border-white/[0.08] rounded-xl p-2.5 text-white text-xs focus:outline-none focus:border-[#10b981]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-[#94a3b8] uppercase block mb-1">
+                      Сумма (₽, если есть):
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={eventAmount}
+                      onChange={(e) => {
+                        const clean = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+                        setEventAmount(clean);
+                      }}
+                      placeholder="0"
+                      className="w-full bg-[#161720] border border-white/[0.08] rounded-xl p-2.5 text-white text-xs focus:outline-none focus:border-[#10b981]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-[#94a3b8] uppercase block mb-1">
+                    Категория:
+                  </label>
+                  <select
+                    value={eventCategory}
+                    onChange={(e) => setEventCategory(e.target.value as EventCategory)}
+                    className="w-full bg-[#161720] border border-white/[0.08] rounded-xl p-2.5 text-white text-xs focus:outline-none focus:border-[#10b981]"
+                  >
+                    <option value="beauty">🌸 Личное / Красота</option>
+                    <option value="health">💊 Здоровье / Спорт</option>
+                    <option value="work">💼 Работа / Встречи</option>
+                    <option value="shopping">🛒 Покупки / Расходы</option>
+                  </select>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-[#10b981] to-[#059669] text-white font-bold text-xs shadow-lg shadow-emerald-500/25 active:scale-95 transition-all mt-2"
+                >
+                  Добавить событие в календарь
+                </button>
+              </form>
+            )}
+
+            {/* Tab 2: Shift Form */}
+            {mobileAddTab === 'shift' && (
+              <div className="space-y-3 pt-1">
+                <div>
+                  <label className="text-[10px] font-bold text-[#94a3b8] uppercase block mb-1.5">
+                    1. Тип смены на {selectedDateStr}:
+                  </label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {(Object.keys(SHIFT_TYPE_CONFIG) as ShiftType[]).map((type) => {
+                      const cfg = SHIFT_TYPE_CONFIG[type];
+                      const isCur = formType === type;
+                      const IconComp = cfg.icon;
+                      return (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() => {
+                            setFormType(type);
+                            if (type === 'full') setFormHours(shiftSettings.defaultFullHours);
+                            if (type === 'day' || type === 'night') setFormHours(shiftSettings.defaultDayHours);
+                            if (type === 'part') setFormHours(8);
+                            if (type === 'off' || type === 'vacation') setFormHours(0);
+                          }}
+                          className={`p-2 rounded-xl border text-left flex flex-col justify-between gap-1 transition-all active:scale-95 ${
+                            isCur
+                              ? 'border-[#8b5cf6] bg-[#8b5cf6]/20 text-white shadow-md ring-1 ring-[#8b5cf6]'
+                              : 'border-white/[0.08] bg-[#161720] text-[#94a3b8] hover:bg-white/[0.06] hover:text-white'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <div
+                              className="w-5 h-5 rounded-md flex items-center justify-center"
+                              style={{ backgroundColor: `${cfg.color}20` }}
+                            >
+                              <IconComp size={12} color={cfg.color} />
+                            </div>
+                          </div>
+                          <span className="text-[11px] font-bold truncate block">{cfg.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {formType !== 'off' && formType !== 'vacation' && (
+                  <div className="space-y-2.5 pt-1">
+                    {/* Hours */}
+                    <div className="p-2.5 rounded-xl bg-[#161720] border border-white/[0.08] space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-bold text-[#94a3b8] uppercase">
+                          2. Длительность:
+                        </label>
+                        <div className="flex items-center gap-1.5 bg-[#111218] border border-white/[0.08] rounded-lg px-2 py-0.5">
+                          <button
+                            type="button"
+                            onClick={() => setFormHours((h) => Math.max(1, h - 1))}
+                            className="w-5 h-5 rounded bg-white/[0.06] text-white flex items-center justify-center font-bold text-xs active:scale-90"
+                          >
+                            -
+                          </button>
+                          <span className="font-mono text-xs font-bold text-[#38bdf8] px-1">
+                            {formHours} ч
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setFormHours((h) => Math.min(24, h + 1))}
+                            className="w-5 h-5 rounded bg-white/[0.06] text-white flex items-center justify-center font-bold text-xs active:scale-90"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {[4, 8, 10, 12, 14, 24].map((h) => (
+                          <button
+                            key={h}
+                            type="button"
+                            onClick={() => setFormHours(h)}
+                            className={`flex-1 py-1 rounded-lg text-[10px] font-mono font-bold border transition-all ${
+                              formHours === h
+                                ? 'bg-[#38bdf8]/20 border-[#38bdf8] text-[#38bdf8]'
+                                : 'bg-white/[0.04] border-white/[0.06] text-[#94a3b8]'
+                            }`}
+                          >
+                            {h}ч
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Rate & Bonus */}
+                    <div className="p-2.5 rounded-xl bg-[#161720] border border-white/[0.08] space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-bold text-[#94a3b8] uppercase">
+                          3. Оплата:
+                        </label>
+                        <div className="flex items-center p-0.5 bg-[#111218] border border-white/[0.06] rounded-lg text-[9px]">
+                          <button
+                            type="button"
+                            onClick={() => setFormRateType('hourly')}
+                            className={`px-2 py-0.5 rounded font-bold transition-all ${
+                              formRateType === 'hourly'
+                                ? 'bg-[#8b5cf6] text-white'
+                                : 'text-[#94a3b8]'
+                            }`}
+                          >
+                            ₽/час
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setFormRateType('fixed')}
+                            className={`px-2 py-0.5 rounded font-bold transition-all ${
+                              formRateType === 'fixed'
+                                ? 'bg-[#8b5cf6] text-white'
+                                : 'text-[#94a3b8]'
+                            }`}
+                          >
+                            ₽/смена
+                          </button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[9px] text-[#94a3b8] mb-0.5">
+                            {formRateType === 'hourly' ? 'Ставка (₽/ч)' : 'Ставка (₽)'}
+                          </label>
+                          <input
+                            type="number"
+                            value={formRate}
+                            onChange={(e) => setFormRate(Number(e.target.value))}
+                            className="w-full bg-[#111218] border border-white/[0.08] rounded-lg p-1.5 text-white font-mono text-xs focus:outline-none focus:border-[#8b5cf6]"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] text-[#94a3b8] mb-0.5">
+                            Бонус (₽)
+                          </label>
+                          <input
+                            type="number"
+                            value={formBonus}
+                            onChange={(e) => setFormBonus(Number(e.target.value))}
+                            placeholder="0"
+                            className="w-full bg-[#111218] border border-white/[0.08] rounded-lg p-1.5 text-white font-mono text-xs focus:outline-none focus:border-[#8b5cf6]"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Shift Expense */}
+                    <div className="p-2.5 rounded-xl bg-[#161720] border border-white/[0.08] space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-[#f43f5e] font-bold uppercase flex items-center gap-1">
+                          <Wallet size={11} />
+                          <span>4. Расход за смену:</span>
+                        </span>
+                        <span className="font-mono text-xs text-[#f43f5e] font-bold">{formExpense} ₽</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {[100, 200, 300, 500].map((amt) => (
+                          <button
+                            key={amt}
+                            type="button"
+                            onClick={() => setFormExpense(amt)}
+                            className={`flex-1 py-1 rounded-lg text-[10px] font-mono font-bold border transition-all ${
+                              formExpense === amt
+                                ? 'bg-[#f43f5e]/25 border-[#f43f5e] text-white'
+                                : 'bg-white/[0.04] border-white/[0.06] text-[#cbd5e1]'
+                            }`}
+                          >
+                            +{amt}
+                          </button>
+                        ))}
+                        {formExpense > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setFormExpense(0)}
+                            className="py-1 px-2 rounded-lg bg-red-500/15 text-[#f43f5e] text-[10px] font-bold"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Live Calculation */}
+                    <div className="p-2 rounded-xl bg-[#161824] border border-white/[0.08] flex items-center justify-between text-xs">
+                      <span className="text-[#94a3b8] text-[10px]">На руках:</span>
+                      <span className="font-black text-[#10b981] font-mono">
+                        {(
+                          (formRateType === 'hourly' ? formHours * formRate : formRate) +
+                          formBonus -
+                          formExpense
+                        ).toLocaleString('ru-RU')}{' '}
+                        ₽
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Note */}
+                <div>
+                  <label className="block text-[9px] font-semibold text-[#94a3b8] mb-1">
+                    Примечание:
+                  </label>
+                  <textarea
+                    value={formNote}
+                    onChange={(e) => setFormNote(e.target.value)}
+                    placeholder="Заметки по смене..."
+                    rows={2}
+                    className="w-full bg-[#161720] border border-white/[0.08] rounded-xl p-2 text-white text-xs resize-none focus:outline-none focus:border-[#8b5cf6]"
+                  />
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleSaveSelectedShift();
+                      setIsMobileAddModalOpen(false);
+                    }}
+                    className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#8b5cf6] to-[#7c5cff] text-white text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-purple-500/25 active:scale-95 transition-all"
+                  >
+                    <Save size={14} />
+                    <span>Сохранить смену</span>
+                  </button>
+
+                  {selectedShift && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        deleteShift(selectedDateStr);
+                        showToast('Смена удалена');
+                        setIsMobileAddModalOpen(false);
+                      }}
+                      className="p-3 rounded-xl bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 text-[#f43f5e] text-xs font-bold flex items-center justify-center transition-all active:scale-95"
+                      title="Удалить смену"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Tab 3: Full Mobile-Optimized Cycle Generator */}
+            {mobileAddTab === 'generator' && (
+              <div className="space-y-3.5 pt-1">
+                {/* 1. Cycle Presets */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-[#94a3b8] uppercase block">
+                    1. Шаблон графика смен:
+                  </label>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {CYCLE_PRESET_TEMPLATES.map((preset) => {
+                      const isSelected = selectedPresetId === preset.id;
+                      return (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          onClick={() => handleSelectPreset(preset)}
+                          className={`p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between gap-1 ${
+                            isSelected
+                              ? 'border-[#8b5cf6] bg-[#8b5cf6]/20 text-white ring-1 ring-[#8b5cf6]'
+                              : 'border-white/[0.08] bg-[#161720] text-[#94a3b8] hover:text-white'
+                          }`}
+                        >
+                          <span className="font-bold text-xs text-white block truncate">{preset.name}</span>
+                          <span className="text-[9px] text-[#94a3b8] block truncate">{preset.desc}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 2. Sequence Pills */}
+                <div className="p-2.5 bg-[#101117] border border-white/[0.08] rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-white flex items-center gap-1">
+                      <Sliders size={12} className="text-[#8b5cf6]" />
+                      <span>Цикл: {activeSequence.length} дн.</span>
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setActiveSequence([])}
+                        className="text-[9px] text-[#f43f5e] hover:underline"
+                      >
+                        Очистить
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveSequence(['day', 'night', 'off', 'off'])}
+                        className="text-[9px] text-[#8b5cf6] hover:underline"
+                      >
+                        1/1/2
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1 min-h-[30px] p-1.5 bg-[#161720] rounded-lg border border-white/[0.06] items-center">
+                    {activeSequence.length === 0 ? (
+                      <span className="text-[11px] text-[#64748b] italic">Цикл пуст. Добавьте дни ниже.</span>
+                    ) : (
+                      activeSequence.map((type, idx) => {
+                        const cfg = SHIFT_TYPE_CONFIG[type];
+                        return (
+                          <div
+                            key={idx}
+                            className="px-1.5 py-0.5 rounded border flex items-center gap-1 text-[10px] text-white"
+                            style={{ backgroundColor: cfg.bg, borderColor: cfg.border }}
+                          >
+                            <span>{idx + 1}. {cfg.shortLabel}</span>
+                            <button
+                              type="button"
+                              onClick={() => setActiveSequence((prev) => prev.filter((_, i) => i !== idx))}
+                              className="text-[#94a3b8] hover:text-white font-bold ml-0.5"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  {/* Add Buttons */}
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {(['day', 'night', 'full', 'off'] as const).map((t) => {
+                      const cfg = SHIFT_TYPE_CONFIG[t];
+                      return (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => {
+                            setSelectedPresetId('custom');
+                            setActiveSequence((prev) => [...prev, t]);
+                          }}
+                          className="px-2 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.10] border border-white/[0.06] text-[10px] text-white flex items-center gap-1"
+                        >
+                          <cfg.icon size={10} color={cfg.color} />
+                          <span>+{cfg.shortLabel}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 3. Generation Parameters: Start Date & Duration */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] font-bold text-[#94a3b8] uppercase block mb-1">
+                      Старт графика:
+                    </label>
+                    <input
+                      type="date"
+                      value={genStartDate}
+                      onChange={(e) => setGenStartDate(e.target.value)}
+                      className="w-full bg-[#161720] border border-white/[0.08] rounded-xl p-2 text-white text-xs focus:outline-none focus:border-[#8b5cf6]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-[#94a3b8] uppercase block mb-1">
+                      Период:
+                    </label>
+                    <select
+                      value={genDaysCount}
+                      onChange={(e) => setGenDaysCount(Number(e.target.value))}
+                      className="w-full bg-[#161720] border border-white/[0.08] rounded-xl p-2 text-white text-xs focus:outline-none focus:border-[#8b5cf6]"
+                    >
+                      <option value={30}>1 месяц (30 дн.)</option>
+                      <option value={60}>2 месяца (60 дн.)</option>
+                      <option value={90}>Квартал (90 дн.)</option>
+                      <option value={180}>Полгода (180 дн.)</option>
+                      <option value={365}>1 год (365 дн.)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* 4. Rates Without Leading Zero */}
+                <div className="p-2.5 bg-[#161720] border border-white/[0.08] rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-[#94a3b8] uppercase">Ставка для графика:</span>
+                    <div className="flex items-center p-0.5 bg-[#111218] rounded-lg text-[9px]">
+                      <button
+                        type="button"
+                        onClick={() => setGenRateType('hourly')}
+                        className={`px-2 py-0.5 rounded font-bold ${genRateType === 'hourly' ? 'bg-[#8b5cf6] text-white' : 'text-[#94a3b8]'}`}
+                      >
+                        ₽/час
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setGenRateType('fixed')}
+                        className={`px-2 py-0.5 rounded font-bold ${genRateType === 'fixed' ? 'bg-[#8b5cf6] text-white' : 'text-[#94a3b8]'}`}
+                      >
+                        ₽/смена
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={genRate === 0 ? '' : String(genRate)}
+                        onChange={(e) => {
+                          const clean = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+                          setGenRate(clean === '' ? 0 : Number(clean));
+                        }}
+                        placeholder="Ставка ₽"
+                        className="w-full bg-[#111218] border border-white/[0.08] rounded-lg p-1.5 text-white font-mono text-xs focus:outline-none focus:border-[#8b5cf6]"
+                      />
+                    </div>
+                    <div>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={genDayHours === 0 ? '' : String(genDayHours)}
+                        onChange={(e) => {
+                          const clean = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+                          setGenDayHours(clean === '' ? 0 : Number(clean));
+                        }}
+                        placeholder="Часов в смене (12)"
+                        className="w-full bg-[#111218] border border-white/[0.08] rounded-lg p-1.5 text-white font-mono text-xs focus:outline-none focus:border-[#8b5cf6]"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 5. Live Preview */}
+                {generatorPreview && (
+                  <div className="p-2.5 bg-[#161824] rounded-xl border border-white/[0.08] flex items-center justify-between text-xs">
+                    <span className="text-[#94a3b8] text-[10px]">
+                      {generatorPreview.workDays} смен · {generatorPreview.totalHours}ч
+                    </span>
+                    <span className="font-extrabold text-[#10b981] font-mono">
+                      ~{generatorPreview.projectedEarnings.toLocaleString('ru-RU')} ₽
+                    </span>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleGenerateSchedule();
+                      setIsMobileAddModalOpen(false);
+                    }}
+                    className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#8b5cf6] to-[#7c5cff] text-white font-bold text-xs shadow-lg shadow-purple-500/25 active:scale-95 transition-all flex items-center justify-center gap-2"
+                  >
+                    <Sparkles size={14} />
+                    <span>Сгенерировать график</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`;
+                      shifts.filter((s) => s.date.startsWith(monthPrefix)).forEach((s) => deleteShift(s.date));
+                      showToast('Все смены текущего месяца стерты');
+                      setIsMobileAddModalOpen(false);
+                    }}
+                    className="p-3 rounded-xl bg-red-500/15 text-[#f43f5e] hover:bg-red-500/25 border border-red-500/30 text-xs font-bold transition-all active:scale-95"
+                    title="Очистить смены за месяц"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

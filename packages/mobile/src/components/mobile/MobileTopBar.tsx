@@ -36,15 +36,73 @@ export const MobileTopBar: React.FC<MobileTopBarProps> = ({
   const activeTab = tabs.find((t) => t.id === activeTabId) || tabs[0];
   const activeNeuron = neurons.find((n) => n.id === (activeTab?.noteId || activeNeuronId));
 
-  const handleCreateNote = () => {
-    const newNote = addNeuron('Новая мысль');
-    openNote(newNote.id);
+  const handleContextAdd = () => {
+    switch (activeTab?.type) {
+      case 'note':
+      case 'graph': {
+        const newNote = addNeuron('Новая мысль');
+        openNote(newNote.id);
+        break;
+      }
+      case 'canvas': {
+        window.dispatchEvent(new CustomEvent('mobile-canvas-add-card'));
+        break;
+      }
+      case 'calendar': {
+        window.dispatchEvent(new CustomEvent('mobile-calendar-add-event'));
+        break;
+      }
+      case 'finance': {
+        window.dispatchEvent(new CustomEvent('mobile-finance-add-transaction'));
+        break;
+      }
+      case 'database': {
+        const newNote = addNeuron('Новая запись');
+        openNote(newNote.id);
+        break;
+      }
+      default: {
+        const newNote = addNeuron('Новая мысль');
+        openNote(newNote.id);
+      }
+    }
   };
+
+  const getAddButtonDetails = () => {
+    switch (activeTab?.type) {
+      case 'canvas':
+        return {
+          title: 'Добавить стикер / карточку',
+          bg: 'bg-[#38bdf8] active:bg-[#0284c7]',
+          shadow: 'shadow-[#38bdf8]/20',
+        };
+      case 'calendar':
+        return {
+          title: 'Добавить смену или событие',
+          bg: 'bg-[#10b981] active:bg-[#059669]',
+          shadow: 'shadow-[#10b981]/20',
+        };
+      case 'finance':
+        return {
+          title: 'Добавить доход или расход',
+          bg: 'bg-[#f59e0b] active:bg-[#d97706]',
+          shadow: 'shadow-[#f59e0b]/20',
+        };
+      default:
+        return {
+          title: 'Создать заметку',
+          bg: 'bg-[#7c5cff] active:bg-[#6c48ff]',
+          shadow: 'shadow-[#7c5cff]/20',
+        };
+    }
+  };
+
+  const addBtn = getAddButtonDetails();
 
   const getTitle = () => {
     if (activeTab?.type === 'graph') return 'Нейро-Граф';
     if (activeTab?.type === 'canvas') return 'Холст и Доска';
-    if (activeTab?.type === 'calendar') return 'График смен';
+    if (activeTab?.type === 'calendar') return 'Календарь';
     if (activeTab?.type === 'finance') return 'Финансы и Бюджет';
     if (activeTab?.type === 'database') return 'База данных';
     if (activeTab?.type === 'note') return activeNeuron?.title || activeTab?.title || 'Заметка';
@@ -94,11 +152,11 @@ export const MobileTopBar: React.FC<MobileTopBarProps> = ({
 
         {/* Right: Quick Action Buttons */}
         <div className="flex items-center gap-1 shrink-0">
-          {/* Quick Add Note */}
+          {/* Contextual Quick Add Button */}
           <button
-            onClick={handleCreateNote}
-            className="w-9 h-9 rounded-xl bg-[#7c5cff] active:bg-[#6c48ff] active:scale-95 text-white flex items-center justify-center shadow-lg shadow-[#7c5cff]/20 transition-all"
-            title="Создать заметку"
+            onClick={handleContextAdd}
+            className={`w-9 h-9 rounded-xl ${addBtn.bg} active:scale-95 text-white flex items-center justify-center shadow-lg ${addBtn.shadow} transition-all`}
+            title={addBtn.title}
           >
             <Plus size={18} />
           </button>

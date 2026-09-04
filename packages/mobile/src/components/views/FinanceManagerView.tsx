@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Plus,
   Trash2,
@@ -181,6 +181,15 @@ export const FinanceManagerView: React.FC = () => {
   const handleSelectMonth = (newMonth: number) => setCurrentDate(new Date(year, newMonth, 1));
   const handleSelectYear = (newYear: number) => setCurrentDate(new Date(newYear, month, 1));
   const handleToday = () => setCurrentDate(new Date());
+
+  // Listen for top bar + click on mobile
+  useEffect(() => {
+    const handleMobileAdd = () => {
+      setIsAddTxModalOpen(true);
+    };
+    window.addEventListener('mobile-finance-add-transaction', handleMobileAdd);
+    return () => window.removeEventListener('mobile-finance-add-transaction', handleMobileAdd);
+  }, []);
 
   // Detailed Shift Stats for Selected Month
   const shiftStats = useMemo(() => {
@@ -728,31 +737,6 @@ export const FinanceManagerView: React.FC = () => {
 
           {/* Actions */}
           <div className="flex items-center gap-1.5 flex-wrap">
-            {/* + Расход */}
-            <button
-              onClick={() => {
-                setModalTxType('expense');
-                setIsAddTxModalOpen(true);
-              }}
-              className="px-2.5 py-1.5 rounded-xl bg-[#f43f5e]/20 hover:bg-[#f43f5e]/30 text-[#f43f5e] border border-[#f43f5e]/40 text-xs font-bold flex items-center gap-1 shadow-sm active:scale-95 transition-all"
-            >
-              <Plus size={13} />
-              <span>Расход</span>
-            </button>
-
-            {/* + Доход */}
-            <button
-              onClick={() => {
-                setModalTxType('income');
-                setModalTxCategory('Зарплата');
-                setIsAddTxModalOpen(true);
-              }}
-              className="px-2.5 py-1.5 rounded-xl bg-[#10b981]/20 hover:bg-[#10b981]/30 text-[#10b981] border border-[#10b981]/40 text-xs font-bold flex items-center gap-1 shadow-sm active:scale-95 transition-all"
-            >
-              <Plus size={13} />
-              <span>Доход</span>
-            </button>
-
             {/* Export Note */}
             <button
               onClick={handleExportFinanceReport}
@@ -826,9 +810,49 @@ export const FinanceManagerView: React.FC = () => {
           </button>
         </div>
 
-        {/* Row 2: Hideable KPI Cards Banner */}
+        {/* Mobile Hero Balance Card */}
         {isHeaderKpiVisible && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 animate-fade-in">
+          <div className="flex md:hidden flex-col p-3.5 bg-gradient-to-br from-[#181926] to-[#12131c] border border-white/[0.08] rounded-2xl shadow-lg gap-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] uppercase font-bold text-[#94a3b8] tracking-wider">
+                Чистый остаток (Баланс)
+              </span>
+              <span className="text-[10px] text-[#10b981] font-semibold flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
+                {stats.savingsRate}% сохранено
+              </span>
+            </div>
+            
+            <div className="text-2xl font-black font-mono tracking-tight text-white">
+              {stats.netSavings >= 0 ? '+' : ''}{stats.netSavings.toLocaleString('ru-RU')} ₽
+            </div>
+
+            <div className="grid grid-cols-3 gap-1.5 pt-1 border-t border-white/[0.06] text-center">
+              <div className="p-1.5 rounded-xl bg-black/20">
+                <span className="text-[9px] text-[#94a3b8] block">Доходы</span>
+                <span className="text-xs font-extrabold text-[#10b981] font-mono block truncate">
+                  +{stats.totalIncome.toLocaleString('ru-RU')} ₽
+                </span>
+              </div>
+              <div className="p-1.5 rounded-xl bg-black/20">
+                <span className="text-[9px] text-[#94a3b8] block">Расходы</span>
+                <span className="text-xs font-extrabold text-[#f43f5e] font-mono block truncate">
+                  -{stats.totalExpense.toLocaleString('ru-RU')} ₽
+                </span>
+              </div>
+              <div className="p-1.5 rounded-xl bg-black/20">
+                <span className="text-[9px] text-[#94a3b8] block">Со смен</span>
+                <span className="text-xs font-extrabold text-[#38bdf8] font-mono block truncate">
+                  +{shiftStats.totalEarnings.toLocaleString('ru-RU')} ₽
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Row 2: Desktop Detailed KPI Cards Banner */}
+        {isHeaderKpiVisible && (
+          <div className="hidden md:grid md:grid-cols-4 gap-2.5 animate-fade-in">
             {/* Income */}
             <div className="p-3.5 rounded-2xl bg-gradient-to-b from-[#161824] to-[#12131c] border border-white/[0.08] flex items-center justify-between shadow-lg relative overflow-hidden">
               <div className="space-y-1">
@@ -920,7 +944,7 @@ export const FinanceManagerView: React.FC = () => {
 
         {/* Row 3: Navigation Tab Switcher (Transactions / Goals / Deposits) */}
         <div className="flex items-center justify-between pt-1">
-          <div className="flex items-center p-0.5 bg-[#14151c] border border-white/[0.08] rounded-xl text-xs">
+          <div className="flex items-center p-0.5 bg-[#14151c] border border-white/[0.08] rounded-xl text-xs overflow-x-auto no-scrollbar shrink-0">
             <button
               onClick={() => setActiveTab('transactions')}
               className={`px-3 py-1.5 rounded-lg font-semibold transition-all flex items-center gap-1.5 ${
@@ -998,9 +1022,9 @@ export const FinanceManagerView: React.FC = () => {
         {/* ================= TAB 1: TRANSACTIONS ================= */}
         {activeTab === 'transactions' && (
           <>
-            {/* Left: Hideable Category & Shifts Breakdown */}
+            {/* Left: Desktop Only Category & Shifts Breakdown */}
             {isSidebarCategoriesVisible ? (
-              <div className="w-full md:w-76 border-b md:border-b-0 md:border-r border-white/[0.08] bg-[#111217] p-3.5 flex flex-col justify-between overflow-y-auto space-y-4 shrink-0">
+              <div className="hidden md:flex md:w-76 border-r border-white/[0.08] bg-[#111217] p-3.5 flex-col justify-between overflow-y-auto space-y-4 shrink-0">
                 <div className="space-y-3.5">
                   {/* Calendar Shifts Live Sync Badge & Summary */}
                   <div className="p-3 rounded-2xl bg-gradient-to-br from-[#10b981]/15 via-[#10b981]/5 to-[#06b6d4]/10 border border-[#10b981]/30 space-y-2.5 shadow-sm">
@@ -1116,7 +1140,7 @@ export const FinanceManagerView: React.FC = () => {
             ) : (
               <button
                 onClick={() => setIsSidebarCategoriesVisible(true)}
-                className="w-7 border-r border-white/[0.08] bg-[#111217] hover:bg-[#161720] text-[#94a3b8] flex items-center justify-center text-[10px] uppercase font-bold tracking-widest [writing-mode:vertical-lr] transition-colors"
+                className="hidden md:flex w-7 border-r border-white/[0.08] bg-[#111217] hover:bg-[#161720] text-[#94a3b8] items-center justify-center text-[10px] uppercase font-bold tracking-widest [writing-mode:vertical-lr] transition-colors"
                 title="Показать структуру категорий"
               >
                 Категории
@@ -1967,14 +1991,30 @@ export const FinanceManagerView: React.FC = () => {
               <div>
                 <label className="block text-[#94a3b8] mb-1 font-medium">Сумма (₽)</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   required
                   autoFocus
                   value={modalTxAmount}
-                  onChange={(e) => setModalTxAmount(e.target.value)}
-                  placeholder="Например: 1500"
+                  onChange={(e) => {
+                    const clean = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+                    setModalTxAmount(clean);
+                  }}
+                  placeholder="0"
                   className="w-full bg-[#191a22] border border-white/[0.08] rounded-xl p-2.5 text-base font-bold text-white font-mono focus:outline-none focus:border-[#7c5cff]"
                 />
+                <div className="flex items-center gap-1.5 pt-1.5">
+                  {[100, 500, 1000, 3000, 5000].map((amt) => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => setModalTxAmount((prev) => String((Number(prev) || 0) + amt))}
+                      className="flex-1 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.10] border border-white/[0.06] text-[11px] font-mono font-bold text-[#cbd5e1] active:scale-95 transition-all"
+                    >
+                      +{amt >= 1000 ? (amt / 1000) + 'к' : amt}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div>
@@ -2091,20 +2131,28 @@ export const FinanceManagerView: React.FC = () => {
                 <div>
                   <label className="block text-[#94a3b8] mb-1 font-medium">Целевая сумма (₽)</label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     required
                     value={goalTargetAmount}
-                    onChange={(e) => setGoalTargetAmount(e.target.value)}
-                    placeholder="100 000"
+                    onChange={(e) => {
+                      const clean = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+                      setGoalTargetAmount(clean);
+                    }}
+                    placeholder="0"
                     className="w-full bg-[#191a22] border border-white/[0.08] rounded-xl p-2 text-white font-mono"
                   />
                 </div>
                 <div>
                   <label className="block text-[#94a3b8] mb-1 font-medium">Уже накоплено (₽)</label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     value={goalCurrentAmount}
-                    onChange={(e) => setGoalCurrentAmount(e.target.value)}
+                    onChange={(e) => {
+                      const clean = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+                      setGoalCurrentAmount(clean);
+                    }}
                     placeholder="0"
                     className="w-full bg-[#191a22] border border-white/[0.08] rounded-xl p-2 text-white font-mono"
                   />
@@ -2195,12 +2243,15 @@ export const FinanceManagerView: React.FC = () => {
                 <div>
                   <label className="block text-[#94a3b8] mb-1 font-medium">Ставка (% годовых)</label>
                   <input
-                    type="number"
-                    step="0.1"
+                    type="text"
+                    inputMode="decimal"
                     required
                     value={depRate}
-                    onChange={(e) => setDepRate(e.target.value)}
-                    placeholder="18.5"
+                    onChange={(e) => {
+                      const clean = e.target.value.replace(/[^\d.]/g, '').replace(/^0+(?=\d)/, '');
+                      setDepRate(clean);
+                    }}
+                    placeholder="0"
                     className="w-full bg-[#191a22] border border-white/[0.08] rounded-xl p-2 text-white font-mono"
                   />
                 </div>
@@ -2209,11 +2260,15 @@ export const FinanceManagerView: React.FC = () => {
               <div>
                 <label className="block text-[#94a3b8] mb-1 font-medium">Сумма вклада / баланс (₽)</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   required
                   value={depBalance}
-                  onChange={(e) => setDepBalance(e.target.value)}
-                  placeholder="200 000"
+                  onChange={(e) => {
+                    const clean = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+                    setDepBalance(clean);
+                  }}
+                  placeholder="0"
                   className="w-full bg-[#191a22] border border-white/[0.08] rounded-xl p-2.5 text-white font-mono text-base font-bold"
                 />
               </div>
@@ -2283,12 +2338,16 @@ export const FinanceManagerView: React.FC = () => {
               <div>
                 <label className="block text-[#94a3b8] mb-1 font-medium">Сумма пополнения (₽)</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   required
                   autoFocus
                   value={depositGoalAmountInput}
-                  onChange={(e) => setDepositGoalAmountInput(e.target.value)}
-                  placeholder="5000"
+                  onChange={(e) => {
+                    const clean = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+                    setDepositGoalAmountInput(clean);
+                  }}
+                  placeholder="0"
                   className="w-full bg-[#191a22] border border-white/[0.08] rounded-xl p-2.5 text-base font-bold text-white font-mono focus:outline-none focus:border-[#7c5cff]"
                 />
               </div>
@@ -2366,12 +2425,16 @@ export const FinanceManagerView: React.FC = () => {
                   Сумма {depositAdjustMode === 'replenish' ? 'пополнения' : 'снятия'} (₽)
                 </label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   required
                   autoFocus
                   value={depositAdjustAmount}
-                  onChange={(e) => setDepositAdjustAmount(e.target.value)}
-                  placeholder="10000"
+                  onChange={(e) => {
+                    const clean = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+                    setDepositAdjustAmount(clean);
+                  }}
+                  placeholder="0"
                   className="w-full bg-[#191a22] border border-white/[0.08] rounded-xl p-2.5 text-base font-bold text-white font-mono focus:outline-none focus:border-[#10b981]"
                 />
               </div>

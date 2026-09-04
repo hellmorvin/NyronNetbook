@@ -103,7 +103,7 @@ export const ObsidianNoteEditor: React.FC<ObsidianNoteEditorProps> = ({ noteId }
 
   return (
     <div className="flex-1 h-full bg-[#0d0e12] flex flex-col select-text overflow-y-auto text-[#e2e8f0] relative">
-      <div className="w-full px-8 py-5 pb-20 space-y-4">
+      <div className="w-full px-3 sm:px-6 py-2.5 sm:py-4 pb-20 space-y-3">
         
         {/* Top Control Bar: Mode Switcher & Actions */}
         <div className="flex items-center justify-between gap-2 pb-1 border-b border-white/[0.06] flex-wrap">

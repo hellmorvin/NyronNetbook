@@ -24,7 +24,6 @@ import {
   Download,
   HardDrive,
   Cpu,
-  Key,
   Lock,
   QrCode,
 } from 'lucide-react';
@@ -824,41 +823,6 @@ export const SettingsModal: React.FC = () => {
                     <p className="text-[11px] text-[#94a3b8]">
                       Интеграция источников заметок с ИИ-исследовательской лабораторией Google NotebookLM.
                     </p>
-                  </div>
-                </div>
-
-                {/* Keyboard Shortcuts Cheat Sheet */}
-                <div className="p-4 rounded-2xl bg-[#171822] border border-white/[0.08] space-y-2.5">
-                  <h4 className="font-bold text-white text-xs flex items-center gap-2">
-                    <Key size={14} className="text-[#7c5cff]" />
-                    <span>Шпаргалка горячих клавиш</span>
-                  </h4>
-
-                  <div className="grid grid-cols-2 gap-2 text-[11px]">
-                    <div className="flex items-center justify-between p-2 rounded-lg bg-[#101118]">
-                      <span className="text-[#94a3b8]">Быстрый поиск (Spotlight)</span>
-                      <kbd className="px-2 py-0.5 rounded bg-white/[0.10] text-white font-mono text-[10px] font-bold">
-                        Ctrl + P / K
-                      </kbd>
-                    </div>
-                    <div className="flex items-center justify-between p-2 rounded-lg bg-[#101118]">
-                      <span className="text-[#94a3b8]">Новая заметка</span>
-                      <kbd className="px-2 py-0.5 rounded bg-white/[0.10] text-white font-mono text-[10px] font-bold">
-                        Ctrl + N
-                      </kbd>
-                    </div>
-                    <div className="flex items-center justify-between p-2 rounded-lg bg-[#101118]">
-                      <span className="text-[#94a3b8]">Закрыть активную вкладку</span>
-                      <kbd className="px-2 py-0.5 rounded bg-white/[0.10] text-white font-mono text-[10px] font-bold">
-                        Ctrl + W
-                      </kbd>
-                    </div>
-                    <div className="flex items-center justify-between p-2 rounded-lg bg-[#101118]">
-                      <span className="text-[#94a3b8]">История назад / вперед</span>
-                      <kbd className="px-2 py-0.5 rounded bg-white/[0.10] text-white font-mono text-[10px] font-bold">
-                        Alt + ← / →
-                      </kbd>
-                    </div>
                   </div>
                 </div>
 

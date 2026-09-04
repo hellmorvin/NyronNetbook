@@ -227,12 +227,38 @@ cd NyronNetbook
 # 2. Установить зависимости monorepo
 npm install
 
-# 3. Запустить десктопную версию для разработки
-npm run desktop:app
+# 3. Запуск в режиме разработки:
+npm run dev             # Десктоп (Electron + Vite с горячей перезагрузкой)
+npm run dev:mobile      # Сенсорный мобильный интерфейс (в браузере / смартфоне)
 
-# 4. Сборка готовых пакетов:
-npm run build:desktop:win   # Windows Portable EXE и ZIP (папка release/)
-npm run build:apk           # Подписанный Android APK (папка release/)
+# 4. Сборка готовых пакетов для всех платформ:
+npm run build:desktop:win   # 🪟 Windows Portable .exe и .zip (папка release/)
+npm run build:linux         # 🐧 Linux .AppImage и .deb (папка release/)
+npm run build:mac           # 🍏 macOS .dmg и .zip (Universal / Apple Silicon / Intel)
+npm run build:apk           # 🤖 Android APK (готовый пакет в папке release/)
+npm run build:ios           # 🍎 iOS (синхронизация нативного проекта с Capacitor)
+npm run open:ios            # 🍎 Открытие проекта в Xcode для сборки на iPhone / iPad
+```
+
+### 🐧 Сборка для Linux (Ubuntu, Debian, Fedora, Arch):
+```bash
+# Сборка пакетов AppImage и DEB:
+npm run build:linux
+# Готовые дистрибутивы будут сгенерированы в папке release/:
+# ➜ NeyroNetbook-1.0.0.AppImage
+# ➜ neyronetbook_1.0.0_amd64.deb
+```
+
+### 🍎 Сборка для iOS (iPhone / iPad):
+```bash
+# Требования: компьютер Mac с установленным Xcode и CocoaPods
+# 1. Сборка веб-пакета и синхронизация с Capacitor iOS:
+npm run build:ios
+
+# 2. Открытие нативного проекта в Xcode:
+npm run open:ios
+
+# 3. В Xcode выберите физический iPhone или симулятор iOS и нажмите Run (Cmd + R).
 ```
 
 ---

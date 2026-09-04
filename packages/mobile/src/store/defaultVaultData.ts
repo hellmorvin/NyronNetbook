@@ -1,36 +1,4 @@
 import { Neuron } from '@axon/shared';
 
-export const INITIAL_NEURONS: Neuron[] = [
-  {
-    id: 'neu_welcome_01',
-    filePath: 'Главная.md',
-    title: 'Главная',
-    content: '# Главная заметка\n\nДобро пожаловать в **НейроноБлокнот (NeyroNetbook)**!\n\n- Создавайте заметки через кнопку «+» или клавиши Ctrl+N.\n- Связывайте мысли между собой через вики-ссылки [[Название заметки]].\n- Переключайтесь между Графом, Холстом, Календарем смен и Финансами.\n- Ваши данные хранятся на 100% локально на вашем устройстве.',
-    rawContent: '',
-    frontmatter: {
-      id: 'neu_welcome_01',
-      title: 'Главная',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      tags: ['главная'],
-      pinned: true,
-      color_override: '#7c5cff',
-      learning_state: 'new',
-      activation_level: 1.0,
-      access_count: 1,
-      position: { x: 0, y: 0, z: 0 },
-    },
-    wikiLinks: [],
-    backlinks: [],
-    outlinks: [],
-    tags: ['главная'],
-    pinned: true,
-    color: '#7c5cff',
-    learningState: 'new',
-    activationLevel: 1.0,
-    accessCount: 1,
-    position: { x: 0, y: 0, z: 0 },
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  },
-];
+export const INITIAL_NEURONS: Neuron[] = [];
+

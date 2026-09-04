@@ -12,6 +12,11 @@ const config: CapacitorConfig = {
     backgroundColor: '#0c0d12',
     allowMixedContent: true,
   },
+  ios: {
+    backgroundColor: '#0c0d12',
+    contentInset: 'always',
+    preferredContentMode: 'mobile',
+  },
   plugins: {
     SplashScreen: {
       launchShowDuration: 0,
